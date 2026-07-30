@@ -1,0 +1,8 @@
+.env
+.rag/
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*.egg-info/
+data/papers/*.pdf
