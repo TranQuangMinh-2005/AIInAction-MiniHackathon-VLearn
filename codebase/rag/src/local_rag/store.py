@@ -69,6 +69,8 @@ class SQLiteStore:
                     section TEXT NOT NULL DEFAULT 'Unknown',
                     content TEXT NOT NULL,
                     word_count INTEGER NOT NULL,
+                    line_start INTEGER NOT NULL DEFAULT 0,
+                    line_end INTEGER NOT NULL DEFAULT 0,
                     embedding BLOB NOT NULL,
                     dimensions INTEGER NOT NULL,
                     norm REAL NOT NULL,
@@ -90,6 +92,16 @@ class SQLiteStore:
                 connection.execute(
                     "ALTER TABLE chunks ADD COLUMN section TEXT NOT NULL "
                     "DEFAULT 'Unknown'"
+                )
+            if "line_start" not in columns:
+                connection.execute(
+                    "ALTER TABLE chunks ADD COLUMN line_start INTEGER "
+                    "NOT NULL DEFAULT 0"
+                )
+            if "line_end" not in columns:
+                connection.execute(
+                    "ALTER TABLE chunks ADD COLUMN line_end INTEGER "
+                    "NOT NULL DEFAULT 0"
                 )
 
     def reset(self) -> None:
@@ -147,8 +159,9 @@ class SQLiteStore:
                 """
                 INSERT INTO chunks
                     (id, document_id, source, title, page, section, content,
-                     word_count, embedding, dimensions, norm)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     word_count, line_start, line_end, embedding, dimensions,
+                     norm)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
                     (
@@ -160,6 +173,8 @@ class SQLiteStore:
                         chunk.section,
                         chunk.content,
                         chunk.word_count,
+                        chunk.line_start,
+                        chunk.line_end,
                         _pack_vector(chunk.embedding),
                         len(chunk.embedding),
                         _vector_norm(chunk.embedding),
@@ -182,7 +197,7 @@ class SQLiteStore:
             rows = connection.execute(
                 """
                 SELECT id, document_id, source, title, page, section, content,
-                       word_count, embedding, dimensions
+                       word_count, line_start, line_end, embedding, dimensions
                 FROM chunks
                 ORDER BY source, page, id
                 """
@@ -198,6 +213,8 @@ class SQLiteStore:
                 content=row["content"],
                 word_count=row["word_count"],
                 embedding=_unpack_vector(row["embedding"], row["dimensions"]),
+                line_start=row["line_start"],
+                line_end=row["line_end"],
             )
             for row in rows
         ]
@@ -224,3 +241,23 @@ class SQLiteStore:
             "chunks": int(chunks),
             "embedding_model": self.embedding_model(),
         }
+
+    def list_documents(self) -> list[dict[str, int | str]]:
+        self.initialize()
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT source, title, page_count, indexed_at
+                FROM documents
+                ORDER BY indexed_at, source
+                """
+            ).fetchall()
+        return [
+            {
+                "source": str(row["source"]),
+                "title": str(row["title"]),
+                "page_count": int(row["page_count"]),
+                "indexed_at": str(row["indexed_at"]),
+            }
+            for row in rows
+        ]

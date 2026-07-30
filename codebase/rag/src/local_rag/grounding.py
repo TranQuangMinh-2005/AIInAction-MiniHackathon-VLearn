@@ -231,6 +231,8 @@ def apply_verification(
                 claim=reference.claim,
                 entailed=entailed,
                 entailment_reason=str(item.get("reason", "")),
+                line_start=source.line_start,
+                line_end=source.line_end,
             )
         )
         replacement_labels.setdefault(

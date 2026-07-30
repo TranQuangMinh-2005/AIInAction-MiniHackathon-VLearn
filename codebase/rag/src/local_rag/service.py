@@ -21,7 +21,7 @@ from .openai_clients import (
     OpenAIEmbeddingProvider,
 )
 from .pdf_reader import parse_pdf, sha256_file
-from .retrieval import HybridRetriever, bm25_scores
+from .retrieval import HybridRetriever, bm25_scores, section_adjustment
 from .store import SQLiteStore
 
 
@@ -95,6 +95,10 @@ class RAGService:
             raise NotADirectoryError(f"Not a directory: {root}")
         if reset:
             self.store.reset()
+        else:
+            # Never append vectors from a different provider/model to an
+            # existing index. The caller must rebuild once after switching.
+            self._validate_index_model()
 
         paths = sorted(
             path for path in root.rglob("*") if path.suffix.casefold() == ".pdf"
@@ -241,9 +245,13 @@ class RAGService:
                 for chunk in chunks
                 if chunk.source == resolved_source
             ]
-        scores = bm25_scores(query, chunks)
+        keyword_scores = bm25_scores(query, chunks)
+        scores = [
+            score + section_adjustment(query, chunk.section)
+            for chunk, score in zip(chunks, keyword_scores)
+        ]
         ranked = sorted(
-            zip(chunks, scores),
+            zip(chunks, scores, keyword_scores),
             key=lambda item: item[1],
             reverse=True,
         )[:top_k]
@@ -256,10 +264,12 @@ class RAGService:
                 content=chunk.content,
                 score=round(score, 6),
                 dense_score=0.0,
-                keyword_score=round(score, 6),
+                keyword_score=round(keyword_score, 6),
                 section=chunk.section,
+                line_start=chunk.line_start,
+                line_end=chunk.line_end,
             )
-            for chunk, score in ranked
+            for chunk, score, keyword_score in ranked
         ]
 
     def ask(
@@ -286,3 +296,6 @@ class RAGService:
             "configured_chat_model": self.settings.chat_model,
             "configured_embedding_model": self.settings.embedding_model,
         }
+
+    def documents(self) -> list[dict[str, int | str]]:
+        return self.store.list_documents()

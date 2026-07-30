@@ -95,6 +95,30 @@ def test_embedding_model_mismatch_is_rejected(tmp_path):
         raise AssertionError("Expected RuntimeError")
 
 
+def test_ingest_append_rejects_embedding_model_mismatch(tmp_path):
+    settings = _settings(tmp_path / "index.sqlite3")
+    settings.pdf_dir.mkdir()
+    store = SQLiteStore(settings.index_path)
+    document = Document("doc", "paper.pdf", "Paper", "hash", 1)
+    chunk = Chunk(
+        "chunk", "doc", "paper.pdf", "Paper", 1, "content", 1, (1.0, 0.0)
+    )
+    store.save_document(document, [chunk], "other-model")
+    service = RAGService(
+        settings,
+        embedder=FakeEmbedder(),
+        answerer=FakeAnswerer(),
+        store=store,
+    )
+
+    try:
+        service.ingest_directory(reset=False)
+    except RuntimeError as exc:
+        assert "Embedding model mismatch" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError")
+
+
 def test_question_filename_filters_retrieval_to_one_document(tmp_path):
     settings = _settings(tmp_path / "index.sqlite3")
     store = SQLiteStore(settings.index_path)

@@ -23,6 +23,7 @@ def test_chunks_stay_on_one_page_and_keep_overlap():
     assert chunks[0].content == "one two three four five"
     assert chunks[1].content.startswith("four five")
     assert chunks[2].content == "alpha beta gamma"
+    assert (chunks[0].line_start, chunks[0].line_end) == (1, 1)
 
 
 def test_rejects_invalid_overlap():
@@ -55,3 +56,5 @@ def test_detects_sections_and_keeps_them_on_chunks():
         "Abstract",
         "Introduction",
     ]
+    assert (chunks[0].line_start, chunks[0].line_end) == (2, 2)
+    assert (chunks[1].line_start, chunks[1].line_end) == (4, 4)

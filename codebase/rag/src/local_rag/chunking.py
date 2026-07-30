@@ -116,6 +116,39 @@ def _section_blocks(
     return blocks, section
 
 
+def _line_span(page: PDFPage, content: str) -> tuple[int, int]:
+    """Locate a normalized chunk in the extracted page's numbered lines."""
+    page_words: list[tuple[str, int]] = []
+    for line_number, raw_line in enumerate(page.text.splitlines(), start=1):
+        page_words.extend(
+            (word, line_number)
+            for word in _normalise_space(raw_line).split()
+        )
+    target = content.split()
+    if not target:
+        return 0, 0
+    limit = len(page_words) - len(target) + 1
+    for start in range(max(limit, 0)):
+        candidate = [
+            word for word, _line in page_words[start : start + len(target)]
+        ]
+        if candidate == target:
+            return (
+                page_words[start][1],
+                page_words[start + len(target) - 1][1],
+            )
+    # Inline headings can prevent a full exact match. A stable prefix still
+    # gives a truthful line location for the excerpt.
+    prefix = target[: min(12, len(target))]
+    for start in range(max(len(page_words) - len(prefix) + 1, 0)):
+        candidate = [
+            word for word, _line in page_words[start : start + len(prefix)]
+        ]
+        if candidate == prefix:
+            return page_words[start][1], page_words[start][1]
+    return 0, 0
+
+
 def chunk_document(
     document: Document,
     pages: tuple[PDFPage, ...],
@@ -143,6 +176,7 @@ def chunk_document(
                 if start > 0 and len(selected) <= overlap_words:
                     break
                 content = " ".join(selected)
+                line_start, line_end = _line_span(page, content)
                 stable_key = (
                     f"{document.id}:{page.number}:{block.section}:"
                     f"{block_offset + start}:{content}".encode("utf-8")
@@ -157,6 +191,8 @@ def chunk_document(
                         content=content,
                         word_count=len(selected),
                         section=block.section,
+                        line_start=line_start,
+                        line_end=line_end,
                     )
                 )
             block_offset += len(words)

@@ -17,6 +17,7 @@ from agent.llm import llm
 from langchain_core.messages import SystemMessage, HumanMessage
 from local_rag.agent_tool import ask_research_papers
 from local_rag.service import RAGService
+from agent.tools.paper.paper import arxiv_download_pdf, arxiv_search
 
 app = FastAPI(title="VLearn Agent API")
 
@@ -32,12 +33,27 @@ def citations_used_in_answer(
     citations: list[str],
     answer: str,
 ) -> list[str]:
-    used = []
+    used: list[str] = []
+    unlabeled: list[str] = []
     for citation in citations:
         labels = re.findall(r"\[([^\]]+)\]", citation)
+        if not labels:
+            unlabeled.append(citation)
+            continue
         if any(f"[{label}]" in answer for label in labels):
             used.append(citation)
-    return used or citations
+    return unlabeled + used
+
+
+def citation_details_used_in_answer(
+    details: list[dict],
+    answer: str,
+) -> list[dict]:
+    return [
+        detail
+        for detail in details
+        if f"[{detail.get('label', '')}]" in answer
+    ]
 
 
 @app.on_event("startup")
@@ -50,6 +66,7 @@ class ChatRequest(BaseModel):
     current_page: int
     history: list[dict] = []
     mode: str = "normal"
+    paper_source: str | None = None
 
 
 class PaperAskRequest(BaseModel):
@@ -58,9 +75,14 @@ class PaperAskRequest(BaseModel):
     top_k: int = 6
 
 
+class PaperImportRequest(BaseModel):
+    query: str
+
+
 class ChatResponse(BaseModel):
     answer: str
     citations: list[str]
+    citation_details: list[dict] = []
     current_page: int
     slide_title: str
 
@@ -73,6 +95,73 @@ def health():
         "slide_pages": len(slide_index.page_texts),
         "paper_rag": paper_rag,
     }
+
+
+@app.get("/api/papers")
+def papers():
+    return {"papers": RAGService.from_env().documents()}
+
+
+@app.post("/api/papers/import-arxiv")
+def import_arxiv_paper(req: PaperImportRequest):
+    query = req.query.strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Query không được trống.")
+    try:
+        matches = arxiv_search(query, max_results=1)
+        if not matches:
+            raise HTTPException(
+                status_code=404,
+                detail="Không tìm thấy paper phù hợp trên arXiv.",
+            )
+        paper = matches[0]
+        pdf_url = paper.get("pdf_url", "")
+        if not pdf_url:
+            raise HTTPException(
+                status_code=404,
+                detail="Paper arXiv không có PDF.",
+            )
+        pdf = arxiv_download_pdf(pdf_url)
+        if not pdf.startswith(b"%PDF"):
+            raise HTTPException(
+                status_code=502,
+                detail="arXiv không trả về PDF hợp lệ.",
+            )
+
+        raw_id = (
+            paper.get("abstract_url", "").rstrip("/").split("/")[-1]
+            or "paper"
+        )
+        safe_id = re.sub(r"[^A-Za-z0-9._-]+", "-", raw_id).strip("-")
+        source = f"arxiv-{safe_id}.pdf"
+        service = RAGService.from_env()
+        service.settings.pdf_dir.mkdir(parents=True, exist_ok=True)
+        destination = service.settings.pdf_dir / source
+        temporary = destination.with_suffix(".pdf.part")
+        temporary.write_bytes(pdf)
+        temporary.replace(destination)
+        report = service.ingest_directory(reset=False)
+        document = next(
+            (
+                item
+                for item in service.documents()
+                if item["source"] == source
+            ),
+            None,
+        )
+        return {
+            "paper": document,
+            "arxiv": {
+                "title": paper.get("title", ""),
+                "abstract_url": paper.get("abstract_url", ""),
+                "pdf_url": pdf_url,
+            },
+            "ingest": report.to_dict(),
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @app.post("/api/papers/ask")
@@ -94,6 +183,7 @@ async def chat(req: ChatRequest):
         return ChatResponse(
             answer=f"⚠️ {reason}",
             citations=[],
+            citation_details=[],
             current_page=req.current_page,
             slide_title="",
         )
@@ -121,11 +211,13 @@ async def chat(req: ChatRequest):
         "slide_context": slide_context,
         "current_page": req.current_page,
         "slide_title": slide_title,
+        "paper_source": req.paper_source,
         "messages": req.history,
         "slide_search_result": "" if is_research else None,
         "web_search_result": None,
         "final_answer": None,
         "citations": citations,
+        "citation_details": [],
         "needs_web_search": is_research,
         "error": None,
         "mode": req.mode,
@@ -148,9 +240,17 @@ async def chat(req: ChatRequest):
             }
     else:
         result = build_graph().invoke(initial_state)
+    answer = result.get("final_answer", "Không thể tạo câu trả lời.")
     return ChatResponse(
-        answer=result.get("final_answer", "Không thể tạo câu trả lời."),
-        citations=result.get("citations", citations),
+        answer=answer,
+        citations=citations_used_in_answer(
+            result.get("citations", citations),
+            answer,
+        ),
+        citation_details=citation_details_used_in_answer(
+            result.get("citation_details", []),
+            answer,
+        ),
         current_page=req.current_page,
         slide_title=slide_title,
     )
@@ -188,11 +288,13 @@ async def chat_stream(req: ChatRequest):
         "slide_context": slide_context,
         "current_page": req.current_page,
         "slide_title": slide_title,
+        "paper_source": req.paper_source,
         "messages": req.history,
         "slide_search_result": "" if is_research else None,
         "web_search_result": None,
         "final_answer": None,
         "citations": citations,
+        "citation_details": [],
         "needs_web_search": is_research,
         "error": None,
         "mode": req.mode,
@@ -218,7 +320,13 @@ async def chat_stream(req: ChatRequest):
                 yield f"data: {json.dumps({'token': message})}\n\n"
                 yield (
                     "data: "
-                    + json.dumps({"done": True, "citations": []})
+                    + json.dumps(
+                        {
+                            "done": True,
+                            "citations": [],
+                            "citation_details": [],
+                        }
+                    )
                     + "\n\n"
                 )
                 return
@@ -235,6 +343,7 @@ async def chat_stream(req: ChatRequest):
         current_page = result.get("current_page", 1)
         slide_title = result.get("slide_title", "")
         result_citations = result.get("citations", [])
+        result_citation_details = result.get("citation_details", [])
         needs_web = result.get("needs_web_search", False)
         history = result.get("messages", [])
 
@@ -271,6 +380,14 @@ async def chat_stream(req: ChatRequest):
                 lines.append(f"{role}: {content[:150]}")
             history_text = "LỊCH SỬ HỘI THOẠI:\n" + "\n".join(lines) + "\n\n"
 
+        active_context = (
+            f'Paper duy nhất được phép dùng: "{req.paper_source}".'
+            if is_research
+            else (
+                f'Học viên đang xem trang {current_page} của tài liệu '
+                f'"{slide_title}".'
+            )
+        )
         messages = [
             SystemMessage(content=prompt),
             HumanMessage(content=f"""{history_text}<user_question>
@@ -281,9 +398,9 @@ async def chat_stream(req: ChatRequest):
 {context}
 </slide_research_result>
 
-<current_slide_info>
-Học viên đang xem trang {current_page} của tài liệu "{slide_title}".
-</current_slide_info>"""),
+<active_context>
+{active_context}
+</active_context>"""),
         ]
 
         full_text = ""
@@ -300,6 +417,10 @@ Học viên đang xem trang {current_page} của tài liệu "{slide_title}".
         except Exception:
             result_citations = citations_used_in_answer(
                 result_citations,
+                full_text,
+            )
+            result_citation_details = citation_details_used_in_answer(
+                result_citation_details,
                 full_text,
             )
             if not full_text:
@@ -321,6 +442,7 @@ Học viên đang xem trang {current_page} của tài liệu "{slide_title}".
                     {
                         "done": True,
                         "citations": result_citations,
+                        "citation_details": result_citation_details,
                         "full_answer": full_text,
                     }
                 )
@@ -332,7 +454,11 @@ Học viên đang xem trang {current_page} của tài liệu "{slide_title}".
             result_citations,
             full_text,
         )
-        yield f"data: {json.dumps({'done': True, 'citations': result_citations, 'full_answer': full_text})}\n\n"
+        result_citation_details = citation_details_used_in_answer(
+            result_citation_details,
+            full_text,
+        )
+        yield f"data: {json.dumps({'done': True, 'citations': result_citations, 'citation_details': result_citation_details, 'full_answer': full_text})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 

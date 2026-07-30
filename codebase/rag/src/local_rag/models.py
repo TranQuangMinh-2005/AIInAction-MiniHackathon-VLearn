@@ -30,6 +30,8 @@ class Chunk:
     word_count: int
     embedding: tuple[float, ...] = field(default_factory=tuple)
     section: str = "Unknown"
+    line_start: int = 0
+    line_end: int = 0
 
 
 @dataclass(frozen=True)
@@ -43,6 +45,8 @@ class SearchResult:
     dense_score: float
     keyword_score: float
     section: str = "Unknown"
+    line_start: int = 0
+    line_end: int = 0
 
     def to_dict(self, include_content: bool = True) -> dict[str, Any]:
         value = asdict(self)
@@ -61,6 +65,8 @@ class Citation:
     claim: str = ""
     entailed: bool = False
     entailment_reason: str = ""
+    line_start: int = 0
+    line_end: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

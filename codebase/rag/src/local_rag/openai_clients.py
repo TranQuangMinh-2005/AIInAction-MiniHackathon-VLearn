@@ -106,6 +106,8 @@ def citations_from_answer(
             source=sources[index - 1].source,
             page=sources[index - 1].page,
             quote=sources[index - 1].content[:500],
+            line_start=sources[index - 1].line_start,
+            line_end=sources[index - 1].line_end,
         )
         for index in cited_indices
     )
@@ -123,6 +125,7 @@ def build_grounded_prompt(
                     f"Title: {source.title}",
                         f"Source: {source.source}",
                         f"Page: {source.page}",
+                        f"Lines: {source.line_start}-{source.line_end}",
                         f"Section: {source.section}",
                         f"Excerpt: {source.content}",
                 ]

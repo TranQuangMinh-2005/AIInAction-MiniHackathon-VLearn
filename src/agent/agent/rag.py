@@ -3,10 +3,9 @@ RAG module: Index toàn bộ slide PDF bằng embeddings để tìm kiếm seman
 Chỉ trả về những trang liên quan nhất → tiết kiệm token.
 """
 
-import numpy as np
 from pathlib import Path
 from pypdf import PdfReader
-from agent.providers import build_embedding_model
+from local_rag.retrieval import bm25_scores
 
 PDF_DIR = Path(__file__).parent.parent.parent / "frontend" / "public"
 PDF_FILES = {
@@ -17,8 +16,6 @@ PDF_FILES = {
 class SlideIndex:
     def __init__(self):
         self.page_texts: list[dict] = []
-        self.embeddings: np.ndarray | None = None
-        self.embeddings_model = None
         self._loaded = False
 
     def load(self):
@@ -42,16 +39,10 @@ class SlideIndex:
 
         texts = [p["text"] for p in pages]
         if not texts:
-            self.embeddings = np.empty((0, 0))
             self.page_texts = []
             self._loaded = True
             return
 
-        self.embeddings_model = build_embedding_model()
-        self.embeddings = np.array(
-            self.embeddings_model.embed_documents(texts),
-            dtype=float,
-        )
         self.page_texts = pages
         self._loaded = True
 
@@ -59,30 +50,30 @@ class SlideIndex:
         if not self._loaded:
             self.load()
 
-        if self.embeddings is None or not self.page_texts:
+        if not self.page_texts:
             return []
 
-        query_embedding = np.array(
-            self.embeddings_model.embed_query(query),
-            dtype=float,
+        candidates = [
+            page
+            for page in self.page_texts
+            if not doc_id or page["doc_id"] == doc_id
+        ]
+        if not candidates:
+            return []
+        # BM25 is deterministic, offline, and avoids blocking server startup
+        # on an embedding quota just before a short demo.
+        pseudo_chunks = [
+            type("PageChunk", (), {"content": page["text"]})()
+            for page in candidates
+        ]
+        scores = bm25_scores(query, pseudo_chunks)
+        ranked = sorted(
+            zip(candidates, scores),
+            key=lambda item: item[1],
+            reverse=True,
         )
-        similarities = np.dot(self.embeddings, query_embedding) / (
-            np.maximum(np.linalg.norm(self.embeddings, axis=1), 1e-12)
-            * max(np.linalg.norm(query_embedding), 1e-12)
-        )
-
-        if doc_id:
-            mask = np.array([p["doc_id"] == doc_id for p in self.page_texts])
-            similarities = np.where(mask, similarities, -1)
-
-        top_k = np.argsort(similarities)[-k:][::-1]
-
-        results = []
-        for idx in top_k:
-            if similarities[idx] > 0.35:
-                results.append(self.page_texts[idx])
-
-        return results
+        selected = [page for page, score in ranked[:k] if score > 0]
+        return selected or [page for page, _score in ranked[:1]]
 
     def retrieve_context(self, query: str, doc_id: str | None = None, k: int = 5) -> tuple[str, list[str]]:
         results = self.retrieve(query, doc_id=doc_id, k=k)

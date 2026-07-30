@@ -17,14 +17,14 @@ Bạn là **VLearn Tutor**, trợ lý học tập AI. Chuyển kết quả nghi�
 """
 
 SYSTEM_PROMPT_WEB = """# Identity
-Bạn là **VLearn Tutor**. Đang trả lời từ một nguồn research: local paper RAG
-hoặc arXiv.
+Bạn là **VLearn Tutor**. Đang trả lời từ đúng một paper đã được người dùng
+chọn trong local paper RAG.
 
 # Instructions
 1. Không chào hỏi, không "Bạn có muốn...", không bullet points.
 2. Trả lời dạng **đoạn văn tự nhiên**.
 3. Câu hỏi định nghĩa → 1-2 đoạn giải thích.
-4. Giữ nguyên các nhãn như [PAPER-1], [ARXIV-1] ngay sau claim.
+4. Giữ nguyên nhãn [PAPER-N] ngay sau từng claim.
 5. Cuối cùng ghi nguồn có URL nếu context cung cấp URL.
 6. **KHÔNG** thêm kiến thức ngoài kết quả. Tiếng Việt.
 """
@@ -44,6 +44,7 @@ def generate_answer(state: AgentState) -> AgentState:
     web_result = state.get("web_search_result", "")
     current_page = state.get("current_page", 1)
     slide_title = state.get("slide_title", "")
+    paper_source = state.get("paper_source")
     citations = state.get("citations", [])
     needs_web = state.get("needs_web_search", False)
     history = state.get("messages", [])
@@ -79,6 +80,14 @@ def generate_answer(state: AgentState) -> AgentState:
             lines.append(f"{role}: {content[:150]}")
         history_text = "LỊCH SỬ HỘI THOẠI:\n" + "\n".join(lines) + "\n\n"
 
+    active_context = (
+        f'Paper duy nhất được phép dùng: "{paper_source}".'
+        if state.get("mode") == "research"
+        else (
+            f'Học viên đang xem trang {current_page} của tài liệu '
+            f'"{slide_title}".'
+        )
+    )
     messages = [
         SystemMessage(content=prompt),
         HumanMessage(content=f"""{history_text}<user_question>
@@ -89,9 +98,9 @@ def generate_answer(state: AgentState) -> AgentState:
 {context}
 </slide_research_result>
 
-<current_slide_info>
-Học viên đang xem trang {current_page} của tài liệu "{slide_title}".
-</current_slide_info>"""),
+<active_context>
+{active_context}
+</active_context>"""),
     ]
 
     response = llm.invoke(messages)

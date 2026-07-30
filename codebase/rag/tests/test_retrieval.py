@@ -1,5 +1,9 @@
 from local_rag.models import Chunk
-from local_rag.retrieval import HybridRetriever, bm25_scores
+from local_rag.retrieval import (
+    HybridRetriever,
+    bm25_scores,
+    section_adjustment,
+)
 
 
 class FakeEmbedder:
@@ -49,3 +53,8 @@ def test_hybrid_search_returns_semantic_and_keyword_match_first():
     assert results[0].chunk_id == "a"
     assert results[0].keyword_score == 1.0
     assert len(results) == 2
+
+
+def test_vietnamese_main_result_query_prefers_abstract_section():
+    assert section_adjustment("Kết quả chính được đề xuất là gì?", "Abstract") > 0
+    assert section_adjustment("Kết quả chính được đề xuất là gì?", "References") < 0

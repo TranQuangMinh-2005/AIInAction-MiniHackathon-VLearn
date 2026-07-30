@@ -14,6 +14,7 @@ class AgentState(TypedDict):
     slide_context: str                    # Nội dung slide hiện tại (trang đang xem)
     current_page: int                     # Số trang hiện tại
     slide_title: str                      # Tiêu đề slide
+    paper_source: Optional[str]            # PDF bị khóa trong Research mode
 
     # ── Messages (hội thoại) ──
     messages: Annotated[List[Dict], add_messages]
@@ -25,6 +26,7 @@ class AgentState(TypedDict):
     # ── Final answer ──
     final_answer: Optional[str]           # Câu trả lời cuối cùng
     citations: Optional[List[str]]        # Danh sách nguồn tham khảo
+    citation_details: Optional[List[Dict]] # Trang, dòng, quote kiểm chứng
 
     # ── Flow control ──
     mode: str                             # "normal" | "research"

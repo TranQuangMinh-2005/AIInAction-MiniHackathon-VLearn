@@ -17,10 +17,14 @@ _SUMMARY_CUES = {
     "overview",
     "main content",
     "main contribution",
+    "main result",
+    "proposed",
     "nội dung chính",
     "tổng hợp",
     "tóm tắt",
     "đóng góp chính",
+    "kết quả chính",
+    "đề xuất",
 }
 
 
@@ -33,7 +37,7 @@ def _is_summary_query(query: str) -> bool:
     return any(cue in lowered for cue in _SUMMARY_CUES)
 
 
-def _section_adjustment(query: str, section: str) -> float:
+def section_adjustment(query: str, section: str) -> float:
     normalized = section.casefold()
     if "reference" in normalized or "bibliograph" in normalized:
         return -0.30
@@ -168,7 +172,7 @@ class HybridRetriever:
             combined = (
                 self.dense_weight * dense_unit
                 + (1.0 - self.dense_weight) * keyword_score
-                + _section_adjustment(query, chunk.section)
+                + section_adjustment(query, chunk.section)
             )
             if chunk.word_count < 20:
                 combined -= 0.25
@@ -230,6 +234,8 @@ class HybridRetriever:
                 dense_score=round(item.dense, 6),
                 keyword_score=round(item.keyword, 6),
                 section=item.chunk.section,
+                line_start=item.chunk.line_start,
+                line_end=item.chunk.line_end,
             )
             for item in selected
         ]

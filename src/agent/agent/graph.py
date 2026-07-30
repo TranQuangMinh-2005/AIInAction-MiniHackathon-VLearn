@@ -50,11 +50,13 @@ def run_agent(user_question: str, slide_context: str, current_page: int, slide_t
         "slide_context": slide_context,
         "current_page": current_page,
         "slide_title": slide_title,
+        "paper_source": None,
         "messages": [],
         "slide_search_result": None,
         "web_search_result": None,
         "final_answer": None,
         "citations": [],
+        "citation_details": [],
         "needs_web_search": False,
         "error": None,
     }

@@ -1,7 +1,24 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
+
+interface CitationDetail {
+  label: string;
+  title: string;
+  source: string;
+  page?: number;
+  line_start?: number;
+  line_end?: number;
+  quote: string;
+  url?: string;
+}
+
+interface Paper {
+  source: string;
+  title: string;
+  page_count: number;
+}
 
 interface Message {
   id: string;
@@ -9,6 +26,7 @@ interface Message {
   content: string;
   context?: string;
   citations?: string[];
+  citationDetails?: CitationDetail[];
 }
 
 interface ChatPanelProps {
@@ -35,6 +53,11 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [researchMode, setResearchMode] = useState(false);
+  const [papers, setPapers] = useState<Paper[]>([]);
+  const [selectedPaper, setSelectedPaper] = useState("");
+  const [arxivQuery, setArxivQuery] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [paperError, setPaperError] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
   const sendingRef = useRef(false);
 
@@ -52,10 +75,75 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
     return () => window.clearTimeout(timer);
   }, [selectionText, onSelectionConsumed]);
 
+  const loadPapers = useCallback(async () => {
+    const response = await fetch(`${agentApiUrl}/api/papers`);
+    if (!response.ok) throw new Error("Không tải được danh sách paper.");
+    const data = await response.json();
+    const nextPapers: Paper[] = data.papers || [];
+    setPapers(nextPapers);
+    setSelectedPaper((current) => {
+      if (nextPapers.some((paper) => paper.source === current)) {
+        return current;
+      }
+      return nextPapers[0]?.source || "";
+    });
+  }, [agentApiUrl]);
+
+  useEffect(() => {
+    if (!researchMode) return;
+    const timer = window.setTimeout(() => {
+      loadPapers().catch(() => {
+        setPaperError("Không kết nối được kho paper.");
+      });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [researchMode, loadPapers]);
+
+  const handleImportArxiv = async () => {
+    const query = arxivQuery.trim();
+    if (!query || isImporting) return;
+    setIsImporting(true);
+    setPaperError("");
+    try {
+      const response = await fetch(`${agentApiUrl}/api/papers/import-arxiv`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "Không thể import paper từ arXiv.");
+      }
+      await loadPapers();
+      if (data.paper?.source) setSelectedPaper(data.paper.source);
+      setArxivQuery("");
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: `import-${Date.now()}`,
+          role: "tutor",
+          content:
+            `✅ Đã tải và index **${data.paper?.title || data.arxiv?.title}**. ` +
+            "Paper này đang được chọn; các câu hỏi Research tiếp theo chỉ dùng nội dung của nó.",
+        },
+      ]);
+    } catch (error) {
+      setPaperError(
+        error instanceof Error ? error.message : "Import paper thất bại."
+      );
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const handleSend = async () => {
     if (sendingRef.current) return;
     const trimmed = input.trim();
     if (!trimmed) return;
+    if (researchMode && !selectedPaper) {
+      setPaperError("Hãy chọn một paper trước khi hỏi.");
+      return;
+    }
 
     sendingRef.current = true;
 
@@ -71,6 +159,7 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
       role: "tutor",
       content: "",
       citations: [],
+      citationDetails: [],
     };
 
     setMessages((prev) => [...prev, userMsg, aiMsg]);
@@ -86,6 +175,7 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
           active_doc_id: activeDocId,
           current_page: currentPage,
           mode: researchMode ? "research" : "normal",
+          paper_source: researchMode ? selectedPaper : null,
           history: messages.slice(-5).map((m) => ({
             role: m.role === "tutor" ? "assistant" : "user",
             content: m.content.slice(0, 150),
@@ -127,7 +217,11 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === aiMsgId
-                    ? { ...m, citations: data.citations || [] }
+                    ? {
+                        ...m,
+                        citations: data.citations || [],
+                        citationDetails: data.citation_details || [],
+                      }
                     : m
                 )
               );
@@ -219,21 +313,12 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
           <div>
             <h3 className="text-sm font-semibold text-slate-700">Trợ lý học theo ngữ cảnh</h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Ngữ cảnh: Slide trang {currentPage}
+              {researchMode
+                ? "Chỉ trả lời từ paper đang chọn"
+                : `Ngữ cảnh: Slide trang ${currentPage}`}
             </p>
           </div>
           <div className="flex items-center gap-1">
-            <button
-              onClick={() => setResearchMode(!researchMode)}
-              className={`p-1.5 rounded-lg text-xs font-medium transition-colors ${
-                researchMode
-                  ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
-                  : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-              }`}
-              title={researchMode ? "Research mode: local PDF + arXiv" : "Normal mode: chỉ tìm trong slide"}
-            >
-              {researchMode ? "🔬 Research" : "📖 Normal"}
-            </button>
             <button
               onClick={handleClearChat}
               className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
@@ -253,6 +338,88 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
               </svg>
             </button>
           </div>
+        </div>
+
+        {/* Explicit mode selector */}
+        <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 shrink-0">
+          <div className="grid grid-cols-2 gap-1 rounded-lg bg-slate-200 p-1">
+            <button
+              type="button"
+              onClick={() => {
+                setResearchMode(false);
+                setPaperError("");
+              }}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+                !researchMode
+                  ? "bg-white text-[#134D8B] shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              📖 Normal
+            </button>
+            <button
+              type="button"
+              onClick={() => setResearchMode(true)}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+                researchMode
+                  ? "bg-amber-500 text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              🔬 Research
+            </button>
+          </div>
+
+          {researchMode && (
+            <div className="mt-2 space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
+              <label className="block text-[11px] font-semibold text-amber-900">
+                Paper đang được khóa làm nguồn
+              </label>
+              <select
+                value={selectedPaper}
+                onChange={(event) => {
+                  setSelectedPaper(event.target.value);
+                  setPaperError("");
+                }}
+                className="w-full rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-amber-500"
+              >
+                {papers.length === 0 && (
+                  <option value="">Chưa có paper nào được index</option>
+                )}
+                {papers.map((paper) => (
+                  <option key={paper.source} value={paper.source}>
+                    {paper.title} ({paper.page_count} trang)
+                  </option>
+                ))}
+              </select>
+
+              <div className="flex gap-1">
+                <input
+                  value={arxivQuery}
+                  onChange={(event) => setArxivQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      handleImportArxiv();
+                    }
+                  }}
+                  placeholder="Tìm và thêm 1 paper từ arXiv"
+                  className="min-w-0 flex-1 rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs outline-none focus:border-amber-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleImportArxiv}
+                  disabled={!arxivQuery.trim() || isImporting}
+                  className="rounded-md bg-amber-500 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
+                >
+                  {isImporting ? "Đang index…" : "Thêm"}
+                </button>
+              </div>
+              {paperError && (
+                <p className="text-[11px] text-red-600">{paperError}</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Messages */}
@@ -287,7 +454,48 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
                         {msg.content}
                       </ReactMarkdown>
                     </div>
-                    {msg.citations && msg.citations.length > 0 && (
+                    {msg.citationDetails && msg.citationDetails.length > 0 && (
+                      <div className="mt-2 space-y-1.5 border-t border-slate-200 pt-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                          Bằng chứng trong paper
+                        </p>
+                        {msg.citationDetails.map((citation) => (
+                          <details
+                            key={citation.label}
+                            className="rounded-md border border-slate-200 bg-white text-xs"
+                          >
+                            <summary className="cursor-pointer px-2 py-1.5 font-medium text-[#134D8B]">
+                              [{citation.label}] {citation.source}
+                              {citation.page
+                                ? ` · Trang ${citation.page}, dòng ${citation.line_start}-${citation.line_end}`
+                                : ""}
+                            </summary>
+                            <div className="border-t border-slate-100 px-2 py-2">
+                              <p className="mb-1 text-[11px] font-medium text-slate-500">
+                                Trích nguyên văn:
+                              </p>
+                              <blockquote className="border-l-2 border-amber-400 pl-2 text-[11px] leading-relaxed text-slate-600">
+                                “{citation.quote}”
+                              </blockquote>
+                              {citation.url && (
+                                <a
+                                  href={citation.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="mt-1 inline-block text-[#134D8B] underline"
+                                >
+                                  Mở nguồn
+                                </a>
+                              )}
+                            </div>
+                          </details>
+                        ))}
+                      </div>
+                    )}
+                    {(!msg.citationDetails ||
+                      msg.citationDetails.length === 0) &&
+                      msg.citations &&
+                      msg.citations.length > 0 && (
                       <div className="mt-2 pt-2 border-t border-slate-200">
                         <div className="flex items-center gap-1 text-xs text-slate-400">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -339,7 +547,7 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
                             })}
                         </div>
                       </div>
-                    )}
+                      )}
                   </div>
                 ) : (
                   <p>{msg.content}</p>
@@ -370,7 +578,11 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Nhập câu hỏi của bạn..."
+              placeholder={
+                researchMode
+                  ? "Hỏi về paper đang chọn..."
+                  : "Nhập câu hỏi về slide..."
+              }
               rows={1}
               className="flex-1 bg-transparent px-3 py-2.5 text-sm resize-none outline-none placeholder:text-slate-400 max-h-32"
               style={{ minHeight: "40px" }}
@@ -378,7 +590,9 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
             <button
               type="button"
               onClick={handleSend}
-              disabled={!input.trim()}
+              disabled={
+                !input.trim() || (researchMode && !selectedPaper)
+              }
               className="p-2 m-1 rounded-lg bg-[#134D8B] text-white hover:bg-[#0d3b6e] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
