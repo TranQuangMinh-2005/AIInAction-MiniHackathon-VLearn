@@ -2,52 +2,100 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+import re
 from typing import Any
 
 from agent.config import load_environment
-from local_rag.agent_tool import ask_research_papers
+from local_rag.service import RAGService
 
 from agent.tools.paper.paper import arxiv_search
 
 load_environment()
 
+_ARXIV_CACHE: dict[str, tuple[str, list[str]]] = {}
+
+
+@lru_cache(maxsize=1)
+def _paper_service() -> RAGService:
+    return RAGService.from_env()
+
+
+def build_arxiv_query(question: str) -> str:
+    """Strip Vietnamese/English UI instructions from the research topic."""
+    query = " ".join(question.split())
+    query = re.sub(
+        r"^(?:hãy\s+)?(?:tìm|find|search)\s+",
+        "",
+        query,
+        flags=re.IGNORECASE,
+    )
+    query = re.sub(
+        r"^(?:các\s+)?(?:paper|papers|bài\s+báo|nghiên\s+cứu)"
+        r"(?:\s+mới)?(?:\s+về|\s+about|\s+on)?\s+",
+        "",
+        query,
+        flags=re.IGNORECASE,
+    )
+    query = re.sub(
+        r"\s+(?:và|and)\s+(?:tóm\s+tắt|tổng\s+hợp|summarize|summary)"
+        r".*$",
+        "",
+        query,
+        flags=re.IGNORECASE,
+    )
+    return query.strip(" .?!,") or question
+
 
 def query_local_papers(question: str) -> tuple[str, list[str]]:
-    """Call the standalone local RAG through its stable tool boundary."""
-    result = ask_research_papers(question=question, top_k=6)
-    verified = [
-        citation
-        for citation in result.get("citations", [])
-        if citation.get("entailed") is True
-    ]
-    if not verified:
+    """Fast path: retrieve evidence only when the user names an indexed PDF."""
+    service = _paper_service()
+    source = service.resolve_source(question)
+    if not source:
+        return "", []
+
+    try:
+        results = service.search(question, top_k=4, source=source)
+    except Exception:
+        # The demo remains usable even if the embedding API is rate-limited:
+        # the index still supports local BM25 retrieval without a network call.
+        results = service.keyword_search(
+            question,
+            top_k=4,
+            source=source,
+        )
+    if not results:
         return "", []
 
     evidence: list[str] = []
     citations: list[str] = []
-    for citation in verified:
-        label = citation.get("label", "")
-        source = citation.get("source", "paper")
-        page = citation.get("page", "?")
-        quote = citation.get("quote", "")
-        claim = citation.get("claim", "")
+    for index, result in enumerate(results, 1):
+        label = f"PAPER-{index}"
+        # Bound prompt size so the first streamed token arrives quickly.
+        excerpt = result.content[:1800].strip()
         evidence.append(
-            f"[{label}] Claim đã kiểm chứng: {claim}\n"
-            f"Nguồn: {source}, trang {page}: \"{quote}\""
+            f"[{label}] {result.title}, trang {result.page}, "
+            f"mục {result.section}\n{excerpt}"
         )
-        citations.append(f"{source} - Trang {page} [{label}]")
+        citations.append(
+            f"{result.source} - Trang {result.page} [{label}]"
+        )
 
     context = (
-        "BẰNG CHỨNG TỪ LOCAL PAPER RAG "
-        "(chỉ gồm claim đã qua entailment):\n"
-        + "\n".join(evidence)
+        "BẰNG CHỨNG RETRIEVE TỪ LOCAL PAPER RAG:\n"
+        + "\n\n".join(evidence)
     )
     return context, citations
 
 
-def query_arxiv(question: str, max_results: int = 3) -> tuple[str, list[str]]:
+def query_arxiv(question: str, max_results: int = 2) -> tuple[str, list[str]]:
+    query = build_arxiv_query(question)
+    cache_key = f"{query.casefold()}:{max_results}"
+    if cache_key in _ARXIV_CACHE:
+        return _ARXIV_CACHE[cache_key]
+
     papers: list[dict[str, Any]] = arxiv_search(
-        question,
+        query,
         max_results=max_results,
     )
     if not papers:
@@ -57,7 +105,7 @@ def query_arxiv(question: str, max_results: int = 3) -> tuple[str, list[str]]:
     citations: list[str] = []
     for index, paper in enumerate(papers, 1):
         title = " ".join(paper.get("title", "").split())
-        summary = " ".join(paper.get("summary", "").split())
+        summary = " ".join(paper.get("summary", "").split())[:1200]
         authors = ", ".join(paper.get("authors", [])[:4])
         url = paper.get("abstract_url") or paper.get("pdf_url", "")
         blocks.append(
@@ -66,6 +114,11 @@ def query_arxiv(question: str, max_results: int = 3) -> tuple[str, list[str]]:
             f"Tóm tắt: {summary}\n"
             f"URL: {url}"
         )
-        citations.append(f"arXiv: {title} - {url}")
+        citations.append(f"arXiv [ARXIV-{index}]: {title} - {url}")
 
-    return "KẾT QUẢ TÌM TRÊN ARXIV:\n" + "\n\n".join(blocks), citations
+    result = (
+        "KẾT QUẢ TÌM TRÊN ARXIV:\n" + "\n\n".join(blocks),
+        citations,
+    )
+    _ARXIV_CACHE[cache_key] = result
+    return result

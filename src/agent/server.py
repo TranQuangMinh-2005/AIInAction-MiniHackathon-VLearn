@@ -4,6 +4,7 @@ Chạy lệnh: python server.py
 """
 
 import json
+import re
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,6 +26,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def citations_used_in_answer(
+    citations: list[str],
+    answer: str,
+) -> list[str]:
+    used = []
+    for citation in citations:
+        labels = re.findall(r"\[([^\]]+)\]", citation)
+        if any(f"[{label}]" in answer for label in labels):
+            used.append(citation)
+    return used or citations
+
 
 @app.on_event("startup")
 async def startup():
@@ -84,31 +98,56 @@ async def chat(req: ChatRequest):
             slide_title="",
         )
 
-    slide_context, rag_citations = slide_index.retrieve_context(req.question, doc_id=req.active_doc_id, k=3)
-    citations = rag_citations[:1] if rag_citations else []
+    is_research = req.mode == "research"
+    if is_research:
+        # Research has its own fast router; do not spend an embedding + LLM
+        # decision on slides before looking at the selected paper/arXiv.
+        slide_context, citations = "", []
+    else:
+        slide_context, rag_citations = slide_index.retrieve_context(
+            req.question,
+            doc_id=req.active_doc_id,
+            k=3,
+        )
+        citations = rag_citations[:1] if rag_citations else []
 
     slide_title = (
         "Day 1 — AI & LLM Foundation" if req.active_doc_id == "d1"
         else "Day 2 — Xác định bài toán cho AI"
     )
 
-    graph = build_graph()
     initial_state: AgentState = {
         "user_question": req.question,
         "slide_context": slide_context,
         "current_page": req.current_page,
         "slide_title": slide_title,
         "messages": req.history,
-        "slide_search_result": None,
+        "slide_search_result": "" if is_research else None,
         "web_search_result": None,
         "final_answer": None,
         "citations": citations,
-        "needs_web_search": False,
+        "needs_web_search": is_research,
         "error": None,
         "mode": req.mode,
     }
 
-    result = graph.invoke(initial_state)
+    if is_research:
+        from agent.nodes.answer import generate_answer
+        from agent.nodes.web_search import search_online
+
+        result = search_online(initial_state)
+        if result.get("citations"):
+            result = generate_answer(result)
+        else:
+            result = {
+                **result,
+                "final_answer": result.get(
+                    "web_search_result",
+                    "Không tìm thấy paper phù hợp trên arXiv.",
+                ),
+            }
+    else:
+        result = build_graph().invoke(initial_state)
     return ChatResponse(
         answer=result.get("final_answer", "Không thể tạo câu trả lời."),
         citations=result.get("citations", citations),
@@ -128,26 +167,33 @@ async def chat_stream(req: ChatRequest):
             yield f"data: {json.dumps({'error': reason})}\n\n"
         return StreamingResponse(error_stream(), media_type="text/event-stream")
 
-    slide_context, rag_citations = slide_index.retrieve_context(req.question, doc_id=req.active_doc_id, k=3)
-    citations = rag_citations[:1] if rag_citations else []
+    is_research = req.mode == "research"
+    if is_research:
+        slide_context, citations = "", []
+    else:
+        slide_context, rag_citations = slide_index.retrieve_context(
+            req.question,
+            doc_id=req.active_doc_id,
+            k=3,
+        )
+        citations = rag_citations[:1] if rag_citations else []
 
     slide_title = (
         "Day 1 — AI & LLM Foundation" if req.active_doc_id == "d1"
         else "Day 2 — Xác định bài toán cho AI"
     )
 
-    graph = build_graph()
     initial_state_stream: AgentState = {
         "user_question": req.question,
         "slide_context": slide_context,
         "current_page": req.current_page,
         "slide_title": slide_title,
         "messages": req.history,
-        "slide_search_result": None,
+        "slide_search_result": "" if is_research else None,
         "web_search_result": None,
         "final_answer": None,
         "citations": citations,
-        "needs_web_search": False,
+        "needs_web_search": is_research,
         "error": None,
         "mode": req.mode,
     }
@@ -161,11 +207,25 @@ async def chat_stream(req: ChatRequest):
             without_slide_citations,
         )
 
-        # Run non-streaming nodes
-        result = search_slide(initial_state_stream)
-        result = decide_search(result)
-
-        if result.get("needs_web_search"):
+        # Research mode skips two LLM calls (slide answer + routing).
+        if is_research:
+            result = search_online(initial_state_stream)
+            if not result.get("citations"):
+                message = result.get(
+                    "web_search_result",
+                    "Không tìm thấy paper phù hợp trên arXiv.",
+                )
+                yield f"data: {json.dumps({'token': message})}\n\n"
+                yield (
+                    "data: "
+                    + json.dumps({"done": True, "citations": []})
+                    + "\n\n"
+                )
+                return
+        else:
+            result = search_slide(initial_state_stream)
+            result = decide_search(result)
+        if result.get("needs_web_search") and not is_research:
             result = search_online(result)
 
         # Stream final answer
@@ -183,9 +243,8 @@ async def chat_stream(req: ChatRequest):
             if web_result:
                 prompt = WEB_PROMPT
                 context = web_result
-                result_citations = (
-                    without_slide_citations(result_citations)
-                    + ["Web search"]
+                result_citations = without_slide_citations(
+                    result_citations
                 )
             else:
                 yield f"data: {json.dumps({'token': 'Rất tiếc, nội dung slide hiện tại không có đủ thông tin để trả lời câu hỏi này.'})}\n\n"
@@ -195,8 +254,9 @@ async def chat_stream(req: ChatRequest):
             prompt = SLIDE_PROMPT
             context = slide_result
             if web_result and needs_web:
-                context = f"{slide_result}\n\nKết quả research thêm từ web:\n{web_result}"
-                result_citations = result_citations + ["Web search"]
+                context = (
+                    f"{slide_result}\n\nKết quả research:\n{web_result}"
+                )
 
         history_text = ""
         if history:
@@ -227,12 +287,51 @@ Học viên đang xem trang {current_page} của tài liệu "{slide_title}".
         ]
 
         full_text = ""
-        for chunk in llm.stream(messages):
-            token = chunk.content if hasattr(chunk, "content") else str(chunk)
-            if token:
-                full_text += token
-                yield f"data: {json.dumps({'token': token})}\n\n"
+        try:
+            for chunk in llm.stream(messages):
+                token = (
+                    chunk.content
+                    if hasattr(chunk, "content")
+                    else str(chunk)
+                )
+                if token:
+                    full_text += token
+                    yield f"data: {json.dumps({'token': token})}\n\n"
+        except Exception:
+            result_citations = citations_used_in_answer(
+                result_citations,
+                full_text,
+            )
+            if not full_text:
+                yield (
+                    "data: "
+                    + json.dumps(
+                        {
+                            "error": (
+                                "Gemini đang chạm giới hạn tạm thời. "
+                                "Vui lòng thử lại sau vài giây."
+                            )
+                        }
+                    )
+                    + "\n\n"
+                )
+            yield (
+                "data: "
+                + json.dumps(
+                    {
+                        "done": True,
+                        "citations": result_citations,
+                        "full_answer": full_text,
+                    }
+                )
+                + "\n\n"
+            )
+            return
 
+        result_citations = citations_used_in_answer(
+            result_citations,
+            full_text,
+        )
         yield f"data: {json.dumps({'done': True, 'citations': result_citations, 'full_answer': full_text})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

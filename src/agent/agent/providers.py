@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -24,7 +25,6 @@ class GeminiChat:
 
     def __init__(self, model: str, temperature: float = 0.1) -> None:
         from google import genai
-        import os
 
         api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
         if not api_key:
@@ -34,6 +34,20 @@ class GeminiChat:
             )
         self.client = genai.Client(api_key=api_key)
         self.model = model
+        fallback_models = os.getenv(
+            "AGENT_GEMINI_FALLBACK_MODELS",
+            "gemini-3.1-flash-lite,gemini-2.5-flash-lite",
+        )
+        self.models = list(
+            dict.fromkeys(
+                [model]
+                + [
+                    item.strip()
+                    for item in fallback_models.split(",")
+                    if item.strip()
+                ]
+            )
+        )
         self.temperature = temperature
 
     @staticmethod
@@ -59,24 +73,45 @@ class GeminiChat:
             config["system_instruction"] = system_instruction
         return config
 
+    @staticmethod
+    def _can_fallback(exc: Exception) -> bool:
+        code = getattr(exc, "code", getattr(exc, "status_code", None))
+        return code in {429, 500, 503, 504}
+
     def invoke(self, value: str | Iterable[BaseMessage]) -> ChatChunk:
         system_instruction, prompt = self._prompt(value)
-        response = self.client.models.generate_content(
-            model=self.model,
-            contents=prompt,
-            config=self._config(system_instruction),
-        )
-        return ChatChunk(content=(response.text or "").strip())
+        for index, model in enumerate(self.models):
+            try:
+                response = self.client.models.generate_content(
+                    model=model,
+                    contents=prompt,
+                    config=self._config(system_instruction),
+                )
+                return ChatChunk(content=(response.text or "").strip())
+            except Exception as exc:
+                has_fallback = index + 1 < len(self.models)
+                if not has_fallback or not self._can_fallback(exc):
+                    raise
+        raise RuntimeError("No Gemini chat model was available")
 
     def stream(self, value: str | Iterable[BaseMessage]):
         system_instruction, prompt = self._prompt(value)
-        for chunk in self.client.models.generate_content_stream(
-            model=self.model,
-            contents=prompt,
-            config=self._config(system_instruction),
-        ):
-            if chunk.text:
-                yield ChatChunk(content=chunk.text)
+        for index, model in enumerate(self.models):
+            yielded = False
+            try:
+                for chunk in self.client.models.generate_content_stream(
+                    model=model,
+                    contents=prompt,
+                    config=self._config(system_instruction),
+                ):
+                    if chunk.text:
+                        yielded = True
+                        yield ChatChunk(content=chunk.text)
+                return
+            except Exception as exc:
+                has_fallback = index + 1 < len(self.models)
+                if yielded or not has_fallback or not self._can_fallback(exc):
+                    raise
 
 
 def build_chat_model():
@@ -95,4 +130,3 @@ def build_chat_model():
 def build_embedding_model():
     """Reuse the exact embedding provider configured for the paper RAG."""
     return RAGService.from_env().embedder
-

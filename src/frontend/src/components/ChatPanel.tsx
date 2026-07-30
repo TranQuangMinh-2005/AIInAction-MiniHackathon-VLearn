@@ -230,7 +230,7 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
                   ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
                   : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
               }`}
-              title={researchMode ? "Research mode: tìm kiếm web + paper" : "Normal mode: chỉ tìm trong slide"}
+              title={researchMode ? "Research mode: local PDF + arXiv" : "Normal mode: chỉ tìm trong slide"}
             >
               {researchMode ? "🔬 Research" : "📖 Normal"}
             </button>
@@ -296,16 +296,47 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
                           </svg>
                           {msg.citations
                             .filter((c) => c !== "Web search" && !c.startsWith("http"))
-                            .map((c, i) => (
-                              <button
-                                key={i}
-                                onClick={() => handleCitationClick(c)}
-                                className="bg-slate-200 hover:bg-[#134D8B] hover:text-white px-1.5 py-0.5 rounded text-slate-600 transition-colors cursor-pointer text-xs"
-                                title="Nhấn để chuyển đến trang này"
-                              >
-                                📄 {c}
-                              </button>
-                            ))}
+                            .map((c, i) => {
+                              const url = c.match(/https?:\/\/\S+$/)?.[0];
+                              if (url) {
+                                return (
+                                  <a
+                                    key={i}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="bg-slate-200 hover:bg-[#134D8B] hover:text-white px-1.5 py-0.5 rounded text-slate-600 transition-colors text-xs"
+                                    title="Mở nguồn arXiv"
+                                  >
+                                    🔗 {c.replace(/\s*-\s*https?:\/\/\S+$/, "")}
+                                  </a>
+                                );
+                              }
+
+                              const isSlide = /^D\d+\s*[-–]\s*Trang\s+\d+/i.test(c);
+                              if (isSlide) {
+                                return (
+                                  <button
+                                    key={i}
+                                    onClick={() => handleCitationClick(c)}
+                                    className="bg-slate-200 hover:bg-[#134D8B] hover:text-white px-1.5 py-0.5 rounded text-slate-600 transition-colors cursor-pointer text-xs"
+                                    title="Nhấn để chuyển đến trang slide"
+                                  >
+                                    📄 {c}
+                                  </button>
+                                );
+                              }
+
+                              return (
+                                <span
+                                  key={i}
+                                  className="bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 text-xs"
+                                  title="Nguồn PDF đã index"
+                                >
+                                  📄 {c}
+                                </span>
+                              );
+                            })}
                         </div>
                       </div>
                     )}

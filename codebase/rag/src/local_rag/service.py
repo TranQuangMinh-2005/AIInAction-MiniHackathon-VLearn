@@ -21,7 +21,7 @@ from .openai_clients import (
     OpenAIEmbeddingProvider,
 )
 from .pdf_reader import parse_pdf, sha256_file
-from .retrieval import HybridRetriever
+from .retrieval import HybridRetriever, bm25_scores
 from .store import SQLiteStore
 
 
@@ -213,6 +213,54 @@ class RAGService:
             mmr_lambda=self.settings.mmr_lambda,
         )
         return retriever.search(query, chunks, top_k or self.settings.top_k)
+
+    def resolve_source(self, value: str) -> str | None:
+        """Return the indexed PDF selected by a filename/title in user text."""
+        return self._resolve_source(
+            value,
+            self.store.load_chunks(),
+            required=False,
+        )
+
+    def keyword_search(
+        self,
+        query: str,
+        top_k: int = 4,
+        source: str | None = None,
+    ) -> list[SearchResult]:
+        """No-network retrieval fallback for quota/network failures."""
+        chunks = self.store.load_chunks()
+        if source:
+            resolved_source = self._resolve_source(
+                source,
+                chunks,
+                required=True,
+            )
+            chunks = [
+                chunk
+                for chunk in chunks
+                if chunk.source == resolved_source
+            ]
+        scores = bm25_scores(query, chunks)
+        ranked = sorted(
+            zip(chunks, scores),
+            key=lambda item: item[1],
+            reverse=True,
+        )[:top_k]
+        return [
+            SearchResult(
+                chunk_id=chunk.id,
+                source=chunk.source,
+                title=chunk.title,
+                page=chunk.page,
+                content=chunk.content,
+                score=round(score, 6),
+                dense_score=0.0,
+                keyword_score=round(score, 6),
+                section=chunk.section,
+            )
+            for chunk, score in ranked
+        ]
 
     def ask(
         self,

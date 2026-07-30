@@ -17,14 +17,14 @@ Bạn là **VLearn Tutor**, trợ lý học tập AI. Chuyển kết quả nghi�
 """
 
 SYSTEM_PROMPT_WEB = """# Identity
-Bạn là **VLearn Tutor**. Đang trả lời từ kết quả research gồm local paper RAG,
-arXiv và web.
+Bạn là **VLearn Tutor**. Đang trả lời từ một nguồn research: local paper RAG
+hoặc arXiv.
 
 # Instructions
 1. Không chào hỏi, không "Bạn có muốn...", không bullet points.
 2. Trả lời dạng **đoạn văn tự nhiên**.
 3. Câu hỏi định nghĩa → 1-2 đoạn giải thích.
-4. Giữ nguyên các nhãn trích dẫn như [S1], [ARXIV-1] ngay sau claim.
+4. Giữ nguyên các nhãn như [PAPER-1], [ARXIV-1] ngay sau claim.
 5. Cuối cùng ghi nguồn có URL nếu context cung cấp URL.
 6. **KHÔNG** thêm kiến thức ngoài kết quả. Tiếng Việt.
 """
@@ -52,7 +52,7 @@ def generate_answer(state: AgentState) -> AgentState:
         if web_result:
             prompt = SYSTEM_PROMPT_WEB
             context = web_result
-            citations = without_slide_citations(citations) + ["Web search"]
+            citations = without_slide_citations(citations)
         else:
             return {
                 **state,
