@@ -1,29 +1,30 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface PDFViewerProps {
   pdfPath: string;
   scale: number;
+  activeDocId: string;
   onDocumentLoadSuccess: (numPages: number) => void;
-  onPageInView: (page: number) => void;
+  onPageInView?: (page: number) => void;
 }
 
-export default function PDFViewer({ pdfPath, scale, onDocumentLoadSuccess, onPageInView }: PDFViewerProps) {
+export default function PDFViewer({
+  pdfPath,
+  scale,
+  activeDocId,
+  onDocumentLoadSuccess,
+  onPageInView,
+}: PDFViewerProps) {
   const [numPages, setNumPages] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
-  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
-  const lastPageRef = useRef(0);
-  const onPageInViewRef = useRef(onPageInView);
-  onPageInViewRef.current = onPageInView;
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   const handleLoadSuccess = useCallback(
     ({ numPages: pages }: { numPages: number }) => {
@@ -34,78 +35,69 @@ export default function PDFViewer({ pdfPath, scale, onDocumentLoadSuccess, onPag
   );
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container || numPages === 0) return;
+    if (numPages === 0) return;
 
-    let ticking = false;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (ticking) return;
-        ticking = true;
-        requestAnimationFrame(() => {
-          let maxVisible: { page: number; ratio: number } | null = null;
-          entries.forEach((entry) => {
-            const page = Number(entry.target.getAttribute("data-page"));
-            if (entry.isIntersecting && entry.intersectionRatio > (maxVisible?.ratio ?? 0)) {
-              maxVisible = { page, ratio: entry.intersectionRatio };
-            }
-          });
-          if (maxVisible && maxVisible.page !== lastPageRef.current) {
-            lastPageRef.current = maxVisible.page;
-            onPageInViewRef.current(maxVisible.page);
-          }
-          ticking = false;
-        });
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length === 0) return;
+
+        const topEntry = visible.reduce((prev, curr) =>
+          prev.boundingClientRect.top < curr.boundingClientRect.top ? prev : curr
+        );
+        const page = parseInt(topEntry.target.getAttribute("data-page") || "1", 10);
+        onPageInView?.(page);
       },
-      { root: container, threshold: [0.25, 0.5, 0.75] }
+      { threshold: 0.3, rootMargin: "-20% 0px -20% 0px" }
     );
 
-    pageRefs.current.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [numPages]);
+    observerRef.current = observer;
 
-  const setPageRef = useCallback((page: number, el: HTMLDivElement | null) => {
-    if (el) pageRefs.current.set(page, el);
-    else pageRefs.current.delete(page);
-  }, []);
+    const elements = containerRef.current?.querySelectorAll("[data-page]");
+    elements?.forEach((el) => observer.observe(el));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [numPages, onPageInView]);
 
   return (
-    <Document
-      file={pdfPath}
-      onLoadSuccess={handleLoadSuccess}
-      loading={
-        <div className="flex items-center justify-center h-96 text-slate-400">
-          <div className="text-center">
-            <div className="w-8 h-8 border-2 border-[#134D8B] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm">Đang tải slide...</p>
+    <div ref={containerRef}>
+      <Document
+        file={pdfPath}
+        onLoadSuccess={handleLoadSuccess}
+        loading={
+          <div className="flex items-center justify-center h-96 text-slate-400">
+            <div className="text-center">
+              <div className="w-8 h-8 border-2 border-[#134D8B] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-sm">Đang tải slide...</p>
+            </div>
           </div>
-        </div>
-      }
-      error={
-        <div className="flex items-center justify-center h-96 text-slate-400">
-          <div className="text-center">
+        }
+        error={
+          <div className="flex items-center justify-center h-96 text-slate-400">
             <p className="text-sm">Không thể tải slide. Vui lòng thử lại.</p>
           </div>
-        </div>
-      }
-    >
-      <div ref={containerRef} className="space-y-2 flex flex-col items-center">
-        {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => (
-          <div
-            key={pageNum}
-            ref={(el) => setPageRef(pageNum, el)}
-            data-page={pageNum}
-            className="shadow-lg bg-white"
-          >
-            <Page
-              pageNumber={pageNum}
-              scale={scale}
-              renderTextLayer={false}
+        }
+      >
+        <div className="space-y-2 flex flex-col items-center">
+          {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => (
+            <div
+              key={pageNum}
+              id={`${activeDocId}-page-${pageNum}`}
+              data-page={pageNum}
+              className="shadow-lg bg-white scroll-mt-4"
+            >
+              <Page
+                pageNumber={pageNum}
+                scale={scale}
+              renderTextLayer={true}
               renderAnnotationLayer={false}
-            />
-          </div>
-        ))}
-      </div>
-    </Document>
+              />
+            </div>
+          ))}
+        </div>
+      </Document>
+    </div>
   );
 }

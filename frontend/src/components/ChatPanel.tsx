@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   id: string;
   role: "tutor" | "user";
   content: string;
   context?: string;
+  citations?: string[];
 }
 
 interface ChatPanelProps {
@@ -14,9 +16,12 @@ interface ChatPanelProps {
   currentPage: number;
   isOpen: boolean;
   onToggle: () => void;
+  onJumpToDocPage?: (docId: string, page: number) => void;
+  selectionText?: string;
+  onSelectionConsumed?: () => void;
 }
 
-export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle }: ChatPanelProps) {
+export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, onJumpToDocPage, selectionText, onSelectionConsumed }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -28,42 +33,119 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle }
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const sendingRef = useRef(false);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = () => {
+  useEffect(() => {
+    if (selectionText) {
+      setInput(`Giải thích: "${selectionText}"`);
+      onSelectionConsumed?.();
+    }
+  }, [selectionText, onSelectionConsumed]);
+
+  const handleSend = async () => {
+    if (sendingRef.current) return;
     const trimmed = input.trim();
     if (!trimmed) return;
+
+    sendingRef.current = true;
 
     const userMsg: Message = {
       id: Date.now().toString(),
       role: "user",
       content: trimmed,
-      context: `Slide trang ${currentPage}`,
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    const aiMsgId = (Date.now() + 1).toString();
+    const aiMsg: Message = {
+      id: aiMsgId,
+      role: "tutor",
+      content: "",
+      citations: [],
+    };
+
+    setMessages((prev) => [...prev, userMsg, aiMsg]);
     setInput("");
     setIsTyping(true);
 
-    setTimeout(() => {
-      const responses = [
-        "Đây là câu trả lời mẫu từ VLearn Tutor. Trong bản hoàn chỉnh, AI sẽ trả lời dựa trên nội dung slide và ngữ cảnh hiện tại.",
-        "Rất tiếc, hiện tại tôi chưa có đủ thông tin để trả lời câu hỏi này. Bạn có thể thử hỏi một câu khác hoặc bôi đen đoạn văn bản cụ thể trên slide.",
-        "Dựa trên nội dung slide, đây là giải thích cho câu hỏi của bạn. Bạn có muốn tôi giải thích sâu hơn không?",
-      ];
-      const random = responses[Math.floor(Math.random() * responses.length)];
+    try {
+      const res = await fetch("http://localhost:8000/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: trimmed,
+          active_doc_id: activeDocId,
+          current_page: currentPage,
+          history: messages.slice(-5).map((m) => ({
+            role: m.role === "tutor" ? "assistant" : "user",
+            content: m.content.slice(0, 150),
+          })),
+        }),
+      });
 
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "tutor",
-        content: random,
-      };
-      setMessages((prev) => [...prev, aiMsg]);
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No reader");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.token) {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === aiMsgId
+                    ? { ...m, content: m.content + data.token }
+                    : m
+                )
+              );
+            }
+            if (data.done) {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === aiMsgId
+                    ? { ...m, citations: data.citations || [] }
+                    : m
+                )
+              );
+            }
+            if (data.error) {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === aiMsgId
+                    ? { ...m, content: data.error }
+                    : m
+                )
+              );
+            }
+          } catch {}
+        }
+      }
+    } catch {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === aiMsgId && !m.content
+            ? { ...m, content: "Không thể kết nối đến AI server. Vui lòng thử lại." }
+            : m
+        )
+      );
+    } finally {
       setIsTyping(false);
-    }, 1000);
+      sendingRef.current = false;
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -81,6 +163,24 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle }
         content: "Xin chào! Mình là VLearn Tutor. Bạn có thể bôi đen một đoạn trên slide để hỏi hoặc gửi câu hỏi tự do nhé!",
       },
     ]);
+  };
+
+  const handleCitationClick = (citation: string) => {
+    const match = citation.match(/(D\d)\s*[-–]\s*Trang\s+(\d+)/i);
+    if (!match) return;
+
+    const docId = match[1].toLowerCase();
+    const pageNum = parseInt(match[2], 10);
+
+    if (docId !== activeDocId && onJumpToDocPage) {
+      onJumpToDocPage(docId, pageNum);
+      return;
+    }
+
+    const el = document.getElementById(`${activeDocId}-page-${pageNum}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   return (
@@ -151,7 +251,47 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle }
                 {msg.context && (
                   <div className="text-xs opacity-60 mb-1">Ngữ cảnh: {msg.context}</div>
                 )}
-                <p>{msg.content}</p>
+                {msg.role === "tutor" ? (
+                  <div>
+                    <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0.5 prose-headings:my-2 prose-strong:text-slate-800 prose-a:text-[#134D8B] prose-a:underline">
+                      <ReactMarkdown
+                        components={{
+                          a: ({ href, children }) => (
+                            <a href={href} target="_blank" rel="noopener noreferrer">
+                              {children}
+                            </a>
+                          ),
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    </div>
+                    {msg.citations && msg.citations.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-slate-200">
+                        <div className="flex items-center gap-1 text-xs text-slate-400">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                          </svg>
+                          {msg.citations
+                            .filter((c) => c !== "Web search" && !c.startsWith("http"))
+                            .map((c, i) => (
+                              <button
+                                key={i}
+                                onClick={() => handleCitationClick(c)}
+                                className="bg-slate-200 hover:bg-[#134D8B] hover:text-white px-1.5 py-0.5 rounded text-slate-600 transition-colors cursor-pointer text-xs"
+                                title="Nhấn để chuyển đến trang này"
+                              >
+                                📄 {c}
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p>{msg.content}</p>
+                )}
               </div>
             </div>
           ))}
@@ -184,6 +324,7 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle }
               style={{ minHeight: "40px" }}
             />
             <button
+              type="button"
               onClick={handleSend}
               disabled={!input.trim()}
               className="p-2 m-1 rounded-lg bg-[#134D8B] text-white hover:bg-[#0d3b6e] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
