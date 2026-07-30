@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import SlideViewer from "@/components/SlideViewer";
 import ChatPanel from "@/components/ChatPanel";
@@ -12,6 +12,8 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectionText, setSelectionText] = useState("");
+  const pendingScrollRef = useRef<number | null>(null);
 
   const handleSelectDoc = (docId: string, _title: string, path: string, pages: number) => {
     setActiveDocId(docId);
@@ -19,6 +21,38 @@ export default function Home() {
     setTotalPages(pages);
     setCurrentPage(1);
   };
+
+  const handleJumpToDocPage = useCallback((docId: string, page: number) => {
+    if (docId === activeDocId) return;
+
+    pendingScrollRef.current = page;
+    const path = docId === "d1" ? "/d1-slide-hackathon.pdf" : "/d2-slide-hackathon.pdf";
+    const pages = 29;
+    setActiveDocId(docId);
+    setPdfPath(path);
+    setTotalPages(pages);
+    setCurrentPage(page);
+  }, [activeDocId]);
+
+  const handleAskAboutSelection = useCallback((text: string) => {
+    setChatOpen(true);
+    setSelectionText(text);
+  }, []);
+
+  useEffect(() => {
+    if (pendingScrollRef.current === null) return;
+
+    const page = pendingScrollRef.current;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`${activeDocId}-page-${page}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      pendingScrollRef.current = null;
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [activeDocId, totalPages]);
 
   return (
     <div className="h-full flex flex-col">
@@ -80,9 +114,11 @@ export default function Home() {
           pdfPath={pdfPath}
           totalPages={totalPages}
           sidebarOpen={sidebarOpen}
+          chatOpen={chatOpen}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           currentPage={currentPage}
           onPageChange={setCurrentPage}
+          onAskAboutSelection={handleAskAboutSelection}
         />
         <div className="hidden xl:block">
           <ChatPanel 
@@ -90,6 +126,9 @@ export default function Home() {
             currentPage={currentPage} 
             isOpen={chatOpen}
             onToggle={() => setChatOpen(!chatOpen)}
+            onJumpToDocPage={handleJumpToDocPage}
+            selectionText={selectionText}
+            onSelectionConsumed={() => setSelectionText("")}
           />
         </div>
       </div>
