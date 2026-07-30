@@ -1,11 +1,7 @@
-from langchain_openai import ChatOpenAI
-from dotenv import load_dotenv
-import os
+"""Chat provider used by all Agent nodes."""
 
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
+from agent.providers import build_chat_model
 
-llm = ChatOpenAI(
-    model="gpt-4o-mini",
-    temperature=0.1,
-    api_key=os.getenv("OPENAI_API_KEY"),
-)
+
+# Auto-selects OpenAI when configured, otherwise Gemini.
+llm = build_chat_model()

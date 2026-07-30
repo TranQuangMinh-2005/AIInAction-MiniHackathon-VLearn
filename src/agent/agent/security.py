@@ -34,7 +34,6 @@ JAILBREAK_PATTERNS = [
 HARMFUL_PATTERNS = [
     r"(cách|how\s*to|hướng\s*dẫn)\s+(hack|tấn\s*công|crack|phá\s*hoại)",
     r"(tạo|make|create)\s+(virus|malware|ransomware|trojan)",
-    r"(lừa\s*đảo|scam|phishing|fraud)",
     r"\b(bạo\s*lực|khủng\s*bố|terrorism)\b",
     r"(tự\s*tử|suicide|tự\s*hại|self\s*harm)",
 ]

@@ -4,6 +4,25 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _load_local_env() -> None:
+    """Support both standalone RAG and integrated-repository launches."""
+    load_dotenv(Path.cwd() / ".env", override=False)
+    load_dotenv(PROJECT_ROOT / ".env", override=False)
+
+
+_load_local_env()
+
+
+def _project_path(name: str, default: str) -> Path:
+    value = Path(os.getenv(name, default)).expanduser()
+    return value if value.is_absolute() else PROJECT_ROOT / value
+
 
 def _positive_int(name: str, default: int) -> int:
     raw = os.getenv(name, str(default))
@@ -63,8 +82,10 @@ class Settings:
             else "gemini-embedding-2"
         )
         settings = cls(
-            index_path=Path(os.getenv("RAG_INDEX_PATH", ".rag/index.sqlite3")),
-            pdf_dir=Path(os.getenv("RAG_PDF_DIR", "data/papers")),
+            index_path=_project_path(
+                "RAG_INDEX_PATH", ".rag/index.sqlite3"
+            ),
+            pdf_dir=_project_path("RAG_PDF_DIR", "data/papers"),
             provider=provider,
             chat_model=os.getenv("RAG_CHAT_MODEL", default_chat_model),
             embedding_model=os.getenv(

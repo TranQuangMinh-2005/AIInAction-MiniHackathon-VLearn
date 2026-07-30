@@ -22,6 +22,8 @@ interface ChatPanelProps {
 }
 
 export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, onJumpToDocPage, selectionText, onSelectionConsumed }: ChatPanelProps) {
+  const agentApiUrl =
+    process.env.NEXT_PUBLIC_AGENT_API_URL || "http://localhost:8000";
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -41,10 +43,13 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
   }, [messages]);
 
   useEffect(() => {
-    if (selectionText) {
+    if (!selectionText) return;
+
+    const timer = window.setTimeout(() => {
       setInput(`Giải thích: "${selectionText}"`);
       onSelectionConsumed?.();
-    }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [selectionText, onSelectionConsumed]);
 
   const handleSend = async () => {
@@ -73,7 +78,7 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
     setIsTyping(true);
 
     try {
-      const res = await fetch("http://localhost:8000/api/chat/stream", {
+      const res = await fetch(`${agentApiUrl}/api/chat/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -87,6 +92,9 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
           })),
         }),
       });
+      if (!res.ok) {
+        throw new Error(`AI server returned HTTP ${res.status}`);
+      }
 
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No reader");

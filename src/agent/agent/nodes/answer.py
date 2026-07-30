@@ -1,5 +1,7 @@
 """Node: Tổng hợp câu trả lời cuối cùng."""
 
+import re
+
 from langchain_core.messages import HumanMessage, SystemMessage
 from agent.state import AgentState
 from agent.llm import llm
@@ -15,15 +17,25 @@ Bạn là **VLearn Tutor**, trợ lý học tập AI. Chuyển kết quả nghi�
 """
 
 SYSTEM_PROMPT_WEB = """# Identity
-Bạn là **VLearn Tutor**. Đang trả lời từ kết quả tìm kiếm web.
+Bạn là **VLearn Tutor**. Đang trả lời từ kết quả research gồm local paper RAG,
+arXiv và web.
 
 # Instructions
 1. Không chào hỏi, không "Bạn có muốn...", không bullet points.
 2. Trả lời dạng **đoạn văn tự nhiên**.
 3. Câu hỏi định nghĩa → 1-2 đoạn giải thích.
-4. Cuối cùng: 📎 **Nguồn tham khảo:** [tiêu đề](url)
-5. **KHÔNG** thêm kiến thức ngoài kết quả. Tiếng Việt.
+4. Giữ nguyên các nhãn trích dẫn như [S1], [ARXIV-1] ngay sau claim.
+5. Cuối cùng ghi nguồn có URL nếu context cung cấp URL.
+6. **KHÔNG** thêm kiến thức ngoài kết quả. Tiếng Việt.
 """
+
+
+def without_slide_citations(citations: list[str]) -> list[str]:
+    return [
+        citation
+        for citation in citations
+        if not re.match(r"^D\d+\s*[-–]\s*Trang\s+\d+", citation, re.I)
+    ]
 
 
 def generate_answer(state: AgentState) -> AgentState:
@@ -40,7 +52,7 @@ def generate_answer(state: AgentState) -> AgentState:
         if web_result:
             prompt = SYSTEM_PROMPT_WEB
             context = web_result
-            citations = citations + ["Web search"]
+            citations = without_slide_citations(citations) + ["Web search"]
         else:
             return {
                 **state,

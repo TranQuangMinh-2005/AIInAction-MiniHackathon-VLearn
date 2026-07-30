@@ -3,14 +3,10 @@ RAG module: Index toàn bộ slide PDF bằng embeddings để tìm kiếm seman
 Chỉ trả về những trang liên quan nhất → tiết kiệm token.
 """
 
-import os
 import numpy as np
 from pathlib import Path
 from pypdf import PdfReader
-from langchain_openai import OpenAIEmbeddings
-from dotenv import load_dotenv
-
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
+from agent.providers import build_embedding_model
 
 PDF_DIR = Path(__file__).parent.parent.parent / "frontend" / "public"
 PDF_FILES = {
@@ -18,14 +14,11 @@ PDF_FILES = {
     "d2": PDF_DIR / "d2-slide-hackathon.pdf",
 }
 
-embeddings_model = OpenAIEmbeddings(
-    model="text-embedding-3-small",
-)
-
 class SlideIndex:
     def __init__(self):
         self.page_texts: list[dict] = []
         self.embeddings: np.ndarray | None = None
+        self.embeddings_model = None
         self._loaded = False
 
     def load(self):
@@ -48,7 +41,17 @@ class SlideIndex:
                 })
 
         texts = [p["text"] for p in pages]
-        self.embeddings = np.array(embeddings_model.embed_documents(texts))
+        if not texts:
+            self.embeddings = np.empty((0, 0))
+            self.page_texts = []
+            self._loaded = True
+            return
+
+        self.embeddings_model = build_embedding_model()
+        self.embeddings = np.array(
+            self.embeddings_model.embed_documents(texts),
+            dtype=float,
+        )
         self.page_texts = pages
         self._loaded = True
 
@@ -56,9 +59,16 @@ class SlideIndex:
         if not self._loaded:
             self.load()
 
-        query_embedding = np.array(embeddings_model.embed_query(query))
+        if self.embeddings is None or not self.page_texts:
+            return []
+
+        query_embedding = np.array(
+            self.embeddings_model.embed_query(query),
+            dtype=float,
+        )
         similarities = np.dot(self.embeddings, query_embedding) / (
-            np.linalg.norm(self.embeddings, axis=1) * np.linalg.norm(query_embedding)
+            np.maximum(np.linalg.norm(self.embeddings, axis=1), 1e-12)
+            * max(np.linalg.norm(query_embedding), 1e-12)
         )
 
         if doc_id:
@@ -69,7 +79,7 @@ class SlideIndex:
 
         results = []
         for idx in top_k:
-            if similarities[idx] > 0.5:
+            if similarities[idx] > 0.35:
                 results.append(self.page_texts[idx])
 
         return results

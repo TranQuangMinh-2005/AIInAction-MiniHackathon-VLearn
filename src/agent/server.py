@@ -5,7 +5,7 @@ Chạy lệnh: python server.py
 
 import json
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -14,6 +14,8 @@ from agent.rag import slide_index
 from agent.security import validate_input
 from agent.llm import llm
 from langchain_core.messages import SystemMessage, HumanMessage
+from local_rag.agent_tool import ask_research_papers
+from local_rag.service import RAGService
 
 app = FastAPI(title="VLearn Agent API")
 
@@ -35,11 +37,41 @@ class ChatRequest(BaseModel):
     history: list[dict] = []
     mode: str = "normal"
 
+
+class PaperAskRequest(BaseModel):
+    question: str
+    source: str | None = None
+    top_k: int = 6
+
+
 class ChatResponse(BaseModel):
     answer: str
     citations: list[str]
     current_page: int
     slide_title: str
+
+
+@app.get("/api/health")
+def health():
+    paper_rag = RAGService.from_env().health()
+    return {
+        "status": "ok",
+        "slide_pages": len(slide_index.page_texts),
+        "paper_rag": paper_rag,
+    }
+
+
+@app.post("/api/papers/ask")
+def papers_ask(req: PaperAskRequest):
+    """Direct diagnostic endpoint; the Agent uses this same tool boundary."""
+    try:
+        return ask_research_papers(
+            question=req.question,
+            source=req.source,
+            top_k=req.top_k,
+        )
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
@@ -123,7 +155,11 @@ async def chat_stream(req: ChatRequest):
     async def event_stream():
         from agent.nodes.slide_search import search_slide, decide_search
         from agent.nodes.web_search import search_online
-        from agent.nodes.answer import SYSTEM_PROMPT as SLIDE_PROMPT, SYSTEM_PROMPT_WEB as WEB_PROMPT
+        from agent.nodes.answer import (
+            SYSTEM_PROMPT as SLIDE_PROMPT,
+            SYSTEM_PROMPT_WEB as WEB_PROMPT,
+            without_slide_citations,
+        )
 
         # Run non-streaming nodes
         result = search_slide(initial_state_stream)
@@ -147,7 +183,10 @@ async def chat_stream(req: ChatRequest):
             if web_result:
                 prompt = WEB_PROMPT
                 context = web_result
-                result_citations = result_citations + ["Web search"]
+                result_citations = (
+                    without_slide_citations(result_citations)
+                    + ["Web search"]
+                )
             else:
                 yield f"data: {json.dumps({'token': 'Rất tiếc, nội dung slide hiện tại không có đủ thông tin để trả lời câu hỏi này.'})}\n\n"
                 yield f"data: {json.dumps({'done': True, 'citations': result_citations})}\n\n"

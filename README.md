@@ -2,6 +2,12 @@
 
 **SPEC → Prototype → Demo.** Đây không phải cuộc thi code — đây là cuộc thi **tư duy sản phẩm AI**.
 
+## Prototype tích hợp
+
+Frontend, Agent, slide retrieval, local scientific-paper RAG và công cụ
+research đã được nối trong một MVP. Xem [MVP_RUN.md](MVP_RUN.md) để cài đặt,
+nạp PDF, chạy hai service và kiểm tra API.
+
 - Thời lượng: **1,5 ngày** (một ngày build + một buổi demo)
 - Nhóm: **4-5 người** · zone tối đa 5 nhóm · thi theo lớp
 
