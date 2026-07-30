@@ -1,3 +1,9 @@
 .DS_Store
 node_modules/
 *.env
+
+# Python virtual environment
+agent/venv/
+agent/__pycache__/
+agent/**/__pycache__/
+*.pyc

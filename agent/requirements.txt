@@ -1,0 +1,7 @@
+langgraph>=1.0
+langchain-openai>=1.0
+langchain-core>=1.0
+fastapi>=0.100
+uvicorn>=0.30
+pypdf>=5.0
+python-dotenv>=1.0
