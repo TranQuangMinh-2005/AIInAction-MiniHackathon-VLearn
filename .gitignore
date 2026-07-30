@@ -7,3 +7,8 @@ agent/venv/
 agent/__pycache__/
 agent/**/__pycache__/
 *.pyc
+src/agent/venv/
+src/agent/__pycache__/
+src/agent/**/__pycache__/
+src/frontend/.next/
+src/frontend/node_modules/

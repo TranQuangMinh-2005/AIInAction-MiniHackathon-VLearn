@@ -32,6 +32,7 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [researchMode, setResearchMode] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const sendingRef = useRef(false);
 
@@ -79,6 +80,7 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
           question: trimmed,
           active_doc_id: activeDocId,
           current_page: currentPage,
+          mode: researchMode ? "research" : "normal",
           history: messages.slice(-5).map((m) => ({
             role: m.role === "tutor" ? "assistant" : "user",
             content: m.content.slice(0, 150),
@@ -213,6 +215,17 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
             </p>
           </div>
           <div className="flex items-center gap-1">
+            <button
+              onClick={() => setResearchMode(!researchMode)}
+              className={`p-1.5 rounded-lg text-xs font-medium transition-colors ${
+                researchMode
+                  ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                  : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              }`}
+              title={researchMode ? "Research mode: tìm kiếm web + paper" : "Normal mode: chỉ tìm trong slide"}
+            >
+              {researchMode ? "🔬 Research" : "📖 Normal"}
+            </button>
             <button
               onClick={handleClearChat}
               className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
