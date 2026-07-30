@@ -33,6 +33,7 @@ class ChatRequest(BaseModel):
     active_doc_id: str
     current_page: int
     history: list[dict] = []
+    mode: str = "normal"
 
 class ChatResponse(BaseModel):
     answer: str
@@ -72,6 +73,7 @@ async def chat(req: ChatRequest):
         "citations": citations,
         "needs_web_search": False,
         "error": None,
+        "mode": req.mode,
     }
 
     result = graph.invoke(initial_state)
@@ -115,6 +117,7 @@ async def chat_stream(req: ChatRequest):
         "citations": citations,
         "needs_web_search": False,
         "error": None,
+        "mode": req.mode,
     }
 
     async def event_stream():

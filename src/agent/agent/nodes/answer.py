@@ -1,55 +1,28 @@
-"""
-Node: Tổng hợp câu trả lời cuối cùng.
-
-Prompt thiết kế theo OpenAI Prompt Engineering best practices:
-- Identity → Instructions → Context
-- Giọng điệu sư phạm, thân thiện, dễ hiểu
-"""
+"""Node: Tổng hợp câu trả lời cuối cùng."""
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from agent.state import AgentState
 from agent.llm import llm
 
 SYSTEM_PROMPT = """# Identity
-
-Bạn là **VLearn Tutor**, trợ lý học tập AI trên nền tảng VLearn.
-Nhiệm vụ của bạn là chuyển kết quả nghiên cứu thành câu trả lời
-thân thiện, dễ hiểu cho học viên.
+Bạn là **VLearn Tutor**, trợ lý học tập AI. Chuyển kết quả nghiên cứu thành câu trả lời thân thiện.
 
 # Instructions
-
-1. Mở đầu bằng một câu chào ngắn gọn.
-2. Trình bày nội dung với cấu trúc rõ ràng:
-   - Dùng **in đậm** cho từ khóa.
-   - Dùng bullet points cho danh sách.
-   - Dùng `## Tiêu đề nhỏ` để phân chia.
+1. Mở đầu bằng câu chào ngắn.
+2. Dùng **in đậm** cho từ khóa, bullet points cho danh sách, `##` cho tiêu đề.
 3. Kết thúc: "Bạn có muốn tìm hiểu sâu hơn về phần nào không?"
-
-## Quy tắc bắt buộc
-- **TUYỆT ĐỐI KHÔNG** thêm kiến thức ngoài kết quả tìm kiếm.
-- Nếu kết quả là `SLIDE_NOT_ENOUGH_INFO` → thông báo thiếu.
-- **KHÔNG** bịa đặt số liệu, năm tháng.
-- Tiếng Việt hoàn toàn.
+4. **KHÔNG** thêm kiến thức ngoài kết quả tìm kiếm. Tiếng Việt hoàn toàn.
 """
 
 SYSTEM_PROMPT_WEB = """# Identity
-
-Bạn là **VLearn Tutor**. Bạn đang trả lời từ kết quả tìm kiếm web.
+Bạn là **VLearn Tutor**. Đang trả lời từ kết quả tìm kiếm web.
 
 # Instructions
 1. Không chào hỏi, không "Bạn có muốn...", không bullet points.
-2. Trả lời dạng **đoạn văn tự nhiên**, mạch lạc.
+2. Trả lời dạng **đoạn văn tự nhiên**.
 3. Câu hỏi định nghĩa → 1-2 đoạn giải thích.
-4. Câu hỏi danh sách → liệt kê ngắn gọn.
-5. Cuối cùng thêm dòng:
-   📎 **Nguồn tham khảo:**
-   - [Tiêu đề bài viết](url)
-   - [Tiêu đề bài viết](url)
-
-## Quy tắc
-- **KHÔNG** thêm kiến thức ngoài kết quả tìm kiếm.
-- **KHÔNG** bịa đặt.
-- Tiếng Việt.
+4. Cuối cùng: 📎 **Nguồn tham khảo:** [tiêu đề](url)
+5. **KHÔNG** thêm kiến thức ngoài kết quả. Tiếng Việt.
 """
 
 
@@ -72,7 +45,7 @@ def generate_answer(state: AgentState) -> AgentState:
             return {
                 **state,
                 "final_answer": f"Rất tiếc, nội dung slide hiện tại không có đủ thông tin để trả lời câu hỏi này. Bạn có thể thử:\n- Chuyển sang trang khác có nội dung liên quan\n- Đặt câu hỏi khác về chủ đề trong slide\n- Bôi đen đoạn văn bản cụ thể trên slide để mình giải thích",
-                "citations": citations,
+                "citations": [],
             }
     else:
         prompt = SYSTEM_PROMPT
@@ -110,10 +83,4 @@ Học viên đang xem trang {current_page} của tài liệu "{slide_title}".
     ]
 
     response = llm.invoke(messages)
-    final = response.content
-
-    return {
-        **state,
-        "final_answer": final,
-        "citations": citations,
-    }
+    return {**state, "final_answer": response.content, "citations": citations}

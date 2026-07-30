@@ -27,5 +27,6 @@ class AgentState(TypedDict):
     citations: Optional[List[str]]        # Danh sách nguồn tham khảo
 
     # ── Flow control ──
+    mode: str                             # "normal" | "research"
     needs_web_search: bool                # Có cần search web không?
     error: Optional[str]                  # Lỗi nếu có
