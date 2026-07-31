@@ -40,9 +40,7 @@ interface ChatPanelProps {
 }
 
 export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, onJumpToDocPage, selectionText, onSelectionConsumed }: ChatPanelProps) {
-  // const agentApiUrl =
-  //   process.env.NEXT_PUBLIC_AGENT_API_URL || "http://localhost:8000";
-  const agentApiUrl = ""
+  const agentApiUrl = "/backend";
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
