@@ -32,6 +32,29 @@ Câu hỏi:
     return query[:240] or question
 
 
+def _is_primary_topic_match(
+    search_query: str,
+    paper_title: str,
+    topic_preview: str,
+) -> bool:
+    """Reject papers that merely mention the topic in related work."""
+    response = llm.invoke(
+        """Bạn đang kiểm tra độ phù hợp của paper trước khi tái sử dụng.
+Trả về DUY NHẤT YES nếu chủ đề nghiên cứu chính của paper trực tiếp phù hợp
+với truy vấn. Trả về NO nếu paper chỉ nhắc thoáng qua, dùng như kỹ thuật phụ,
+hoặc có một chủ đề chính khác. Hãy đánh giá nghiêm ngặt.
+
+Truy vấn:
+"""
+        + search_query
+        + "\n\nTiêu đề paper:\n"
+        + paper_title
+        + "\n\nTitle/abstract/introduction preview:\n"
+        + topic_preview[:1800]
+    )
+    return response.content.strip().upper().splitlines()[0] == "YES"
+
+
 def search_online(state: AgentState) -> AgentState:
     question = state["user_question"]
     paper_source = state.get("paper_source")
@@ -62,6 +85,7 @@ def search_online(state: AgentState) -> AgentState:
             local_match = query_relevant_local_paper(
                 question,
                 search_query,
+                topic_validator=_is_primary_topic_match,
             )
             if local_match:
                 context, local_citations, local_details = local_match

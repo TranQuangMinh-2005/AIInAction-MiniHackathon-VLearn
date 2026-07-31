@@ -7,6 +7,7 @@ from agent.nodes import web_search
 from agent.providers import GeminiChat
 from agent.security import validate_input
 from agent.tools import research
+from agent.tools.paper import paper as paper_tool
 from agent.tools.research import build_arxiv_query
 from server import citation_details_used_in_answer, citations_used_in_answer
 
@@ -130,6 +131,8 @@ def test_auto_research_reuses_clearly_relevant_indexed_paper(monkeypatch):
                     "external evidence."
                 ),
                 source="rag-paper.pdf",
+                page=1,
+                keyword_score=0.8,
             )
         ]
     )
@@ -147,6 +150,46 @@ def test_auto_research_reuses_clearly_relevant_indexed_paper(monkeypatch):
 
     assert result is not None
     assert result[0].endswith(":rag-paper.pdf")
+
+
+def test_auto_research_ignores_incidental_body_section_match(monkeypatch):
+    validator_calls = []
+    fake_service = SimpleNamespace(
+        keyword_search=lambda *_args, **_kwargs: [
+            SimpleNamespace(
+                title="Wallet Fraud Prevention Through LightGBM",
+                content=(
+                    "CNN and RNN are deep learning examples mentioned in "
+                    "the related work of this fraud paper."
+                ),
+                source="wallet.pdf",
+                page=3,
+                keyword_score=1.0,
+            ),
+            SimpleNamespace(
+                title="Wallet Fraud Prevention Through LightGBM",
+                content=(
+                    "This fraud paper compares deep learning neural networks "
+                    "but proposes LightGBM to minimize false alarms."
+                ),
+                source="wallet.pdf",
+                page=1,
+                keyword_score=0.2,
+            ),
+        ]
+    )
+    monkeypatch.setattr(research, "_paper_service", lambda: fake_service)
+
+    result = research.query_relevant_local_paper(
+        "Cho ví dụ về mô hình deep learning",
+        "deep learning convolutional neural networks examples",
+        topic_validator=lambda query, title, preview: (
+            validator_calls.append((query, title, preview)) or False
+        ),
+    )
+
+    assert result is None
+    assert len(validator_calls) == 1
 
 
 def test_research_node_forces_selected_local_pdf(
@@ -213,7 +256,7 @@ def test_research_node_auto_searches_arxiv_without_selected_paper(
     monkeypatch.setattr(
         web_search,
         "query_relevant_local_paper",
-        lambda question, search_query: None,
+        lambda question, search_query, topic_validator: None,
     )
 
     result = web_search.search_online(
@@ -258,6 +301,32 @@ def test_arxiv_query_removes_demo_instruction_words():
         "Tìm các paper về retrieval augmented generation "
         "và tóm tắt đóng góp chính"
     ) == "retrieval augmented generation"
+
+
+def test_arxiv_empty_api_result_uses_discovery_fallback(monkeypatch):
+    response = SimpleNamespace(
+        status_code=200,
+        text=(
+            '<?xml version="1.0"?>'
+            '<feed xmlns="http://www.w3.org/2005/Atom"></feed>'
+        ),
+        raise_for_status=lambda: None,
+    )
+    fallback = [
+        {
+            "title": "Deep Learning Survey",
+            "abstract_url": "https://arxiv.org/abs/1234.5678",
+            "pdf_url": "https://arxiv.org/pdf/1234.5678",
+        }
+    ]
+    monkeypatch.setattr(paper_tool, "_request", lambda *_args, **_kwargs: response)
+    monkeypatch.setattr(
+        paper_tool,
+        "_search_duckduckgo_arxiv",
+        lambda query, max_results: fallback,
+    )
+
+    assert paper_tool.arxiv_search("deep learning", 1) == fallback
 
 
 def test_import_arxiv_downloads_one_pdf_and_indexes_it(

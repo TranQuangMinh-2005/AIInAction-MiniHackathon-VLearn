@@ -246,6 +246,10 @@ def arxiv_search(
             }
         )
 
+    if not papers:
+        fallback = _search_duckduckgo_arxiv(query, max_results)
+        if fallback:
+            return fallback
     return papers
 
 

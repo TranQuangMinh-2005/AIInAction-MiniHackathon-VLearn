@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 import re
-from typing import Any
+from typing import Any, Callable
 
 from agent.config import load_environment
 from local_rag.service import RAGService
@@ -23,7 +23,6 @@ _GENERIC_RESEARCH_TERMS = {
     "generation",
     "language",
     "large",
-    "learning",
     "method",
     "model",
     "models",
@@ -131,6 +130,7 @@ def query_local_papers(
 def query_relevant_local_paper(
     question: str,
     search_query: str,
+    topic_validator: Callable[[str, str, str], bool] | None = None,
 ) -> tuple[str, list[str], list[dict[str, Any]]] | None:
     """Reuse an indexed paper when it clearly matches the research query."""
     terms = {
@@ -142,14 +142,37 @@ def query_relevant_local_paper(
         return None
 
     service = _paper_service()
-    candidates = service.keyword_search(search_query, top_k=3)
+    # A mention in an arbitrary body section is not enough to classify the
+    # whole paper as relevant. Only title/abstract/introduction pages are used
+    # for this cheap reuse gate.
+    candidates = [
+        candidate
+        for candidate in service.keyword_search(search_query, top_k=30)
+        if candidate.page <= 2
+    ]
     if not candidates:
         return None
-    best = candidates[0]
-    searchable = f"{best.title} {best.content}".casefold()
-    overlap = sum(term in searchable for term in terms)
+
+    ranked: list[tuple[int, float, Any]] = []
+    for candidate in candidates:
+        searchable = f"{candidate.title} {candidate.content}".casefold()
+        overlap = sum(term in searchable for term in terms)
+        ranked.append(
+            (
+                overlap,
+                float(getattr(candidate, "keyword_score", 0.0)),
+                candidate,
+            )
+        )
+    overlap, _, best = max(ranked, key=lambda item: (item[0], item[1]))
     required = min(3, len(terms))
     if overlap < required:
+        return None
+    if topic_validator and not topic_validator(
+        search_query,
+        best.title,
+        best.content,
+    ):
         return None
 
     return query_local_papers(question, best.source)
