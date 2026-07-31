@@ -85,7 +85,7 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
       if (nextPapers.some((paper) => paper.source === current)) {
         return current;
       }
-      return nextPapers[0]?.source || "";
+      return "";
     });
   }, [agentApiUrl]);
 
@@ -124,7 +124,7 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
           role: "tutor",
           content:
             `✅ Đã tải và index **${data.paper?.title || data.arxiv?.title}**. ` +
-            "Paper này đang được chọn; các câu hỏi Research tiếp theo chỉ dùng nội dung của nó.",
+            "Paper này đang được chọn để focus. Bạn có thể chuyển lại chế độ tự động bất cứ lúc nào.",
         },
       ]);
     } catch (error) {
@@ -140,11 +140,6 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
     if (sendingRef.current) return;
     const trimmed = input.trim();
     if (!trimmed) return;
-    if (researchMode && !selectedPaper) {
-      setPaperError("Hãy chọn một paper trước khi hỏi.");
-      return;
-    }
-
     sendingRef.current = true;
 
     const userMsg: Message = {
@@ -314,7 +309,7 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
             <h3 className="text-sm font-semibold text-slate-700">Trợ lý học theo ngữ cảnh</h3>
             <p className="text-xs text-slate-400 mt-0.5">
               {researchMode
-                ? "Chỉ trả lời từ paper đang chọn"
+                ? "Mở rộng kiến thức bằng paper từ arXiv"
                 : `Ngữ cảnh: Slide trang ${currentPage}`}
             </p>
           </div>
@@ -373,7 +368,7 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
           {researchMode && (
             <div className="mt-2 space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
               <label className="block text-[11px] font-semibold text-amber-900">
-                Paper đang được khóa làm nguồn
+                Nguồn Research (không bắt buộc)
               </label>
               <select
                 value={selectedPaper}
@@ -383,9 +378,9 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
                 }}
                 className="w-full rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-amber-500"
               >
-                {papers.length === 0 && (
-                  <option value="">Chưa có paper nào được index</option>
-                )}
+                <option value="">
+                  Tự động tìm paper phù hợp trên arXiv
+                </option>
                 {papers.map((paper) => (
                   <option key={paper.source} value={paper.source}>
                     {paper.title} ({paper.page_count} trang)
@@ -580,7 +575,7 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
               onKeyDown={handleKeyDown}
               placeholder={
                 researchMode
-                  ? "Hỏi về paper đang chọn..."
+                  ? "Hỏi sâu hơn — Research sẽ tìm paper..."
                   : "Nhập câu hỏi về slide..."
               }
               rows={1}
@@ -590,9 +585,7 @@ export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, 
             <button
               type="button"
               onClick={handleSend}
-              disabled={
-                !input.trim() || (researchMode && !selectedPaper)
-              }
+              disabled={!input.trim()}
               className="p-2 m-1 rounded-lg bg-[#134D8B] text-white hover:bg-[#0d3b6e] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

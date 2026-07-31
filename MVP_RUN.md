@@ -2,7 +2,7 @@
 
 Hệ thống dùng một backend FastAPI:
 
-`Frontend → Agent → Normal (slide) / Research (đúng một local paper)`
+`Frontend → Agent → Normal (slide) / Research (slide → ArXiv → local RAG)`
 
 RAG nằm độc lập trong `codebase/rag`. Agent chỉ gọi interface của RAG, nên
 nhóm Agent có thể thay graph hoặc prompt mà không cần biết PDF parser, chunking
@@ -70,12 +70,18 @@ npm run dev
 Mở <http://localhost:3000>.
 
 - **Normal**: trả lời theo slide VLearn như hệ thống cũ.
-- **Research**: bắt buộc chọn một paper; retrieval và câu trả lời bị khóa vào
-  đúng file đó, không trộn paper và không tự web search.
+- **Research mặc định**: dùng câu hỏi và ngữ cảnh slide để tạo truy vấn tiếng
+  Anh; ưu tiên tái sử dụng paper phù hợp đã index, nếu chưa có thì tự tìm một
+  paper trên arXiv, tải PDF, index và trả lời từ full text.
+- **Focus paper (tùy chọn)**: chọn một paper khi muốn kiểm thử hoặc chỉ hỏi sâu
+  đúng tài liệu đó. Không cần chọn paper để gửi câu hỏi Research.
 - **Thêm từ arXiv**: nhập chủ đề, tool tải một PDF phù hợp nhất, index vào local
-  RAG và tự chọn paper vừa thêm. Các câu hỏi sau đó vẫn chỉ dựa vào paper này.
+  RAG và chọn paper vừa thêm làm nguồn focus.
 - Mỗi nguồn hiển thị nhãn, tên file, trang, dòng text trích xuất và quote nguyên
   văn để người demo mở ra kiểm chứng.
+
+Nếu API chính thức của arXiv trả `429`, discovery tự fallback qua kết quả tìm
+kiếm chỉ giới hạn ở domain `arxiv.org`; PDF và bằng chứng cuối vẫn lấy từ arXiv.
 
 Việc đánh số dòng dựa trên text được trích xuất từ PDF, không phải số dòng in
 sẵn trên giao diện PDF.
@@ -114,13 +120,15 @@ NEXT_PUBLIC_AGENT_API_URL=http://localhost:8000
 Khởi động trước giờ demo, chạy health và mở sẵn UI.
 
 1. Chọn **Normal**, hỏi: `AI là gì theo nội dung bài học?`
-2. Chọn **Research** → chọn `W-Online-payment.pdf`, hỏi:
+2. Chọn **Research**, giữ nguồn ở `Tự động tìm paper phù hợp trên arXiv`, hỏi
+   một kiến thức vượt quá slide, ví dụ:
+   `Retrieval-Augmented Generation giúp giảm hallucination như thế nào?`
+3. Mở citation để chỉ rõ paper được tìm tự động, `Trang`, `dòng` và
+   `Trích nguyên văn`.
+4. Chọn `W-Online-payment.pdf` để minh họa focus paper, hỏi:
    `Ba mô hình được đề xuất là gì và kết quả giảm tổn thất chính là bao nhiêu?`
-3. Mở một citation để chỉ rõ `Trang`, `dòng` và `Trích nguyên văn`.
-4. Đổi sang paper Wallet, hỏi:
-   `Paper sử dụng mô hình nào và giảm false alarm bằng cách nào?`
-5. Nhập một chủ đề ngắn ở ô arXiv, bấm **Thêm**, đợi thông báo đã index; paper
-   mới được tự chọn. Hỏi một câu chỉ có trong paper mới và mở citation.
+5. Nếu còn thời gian, nhập một chủ đề ngắn ở ô arXiv, bấm **Thêm**, rồi hỏi
+   một câu trên paper vừa được chọn.
 
 Nên nhập thử đúng chủ đề arXiv dự định demo trước buổi trình bày để xác nhận
 paper kết quả đầu tiên phù hợp và thời gian tải PDF ổn. Không cần gọi arXiv lại
@@ -129,8 +137,9 @@ khi paper đã nằm trong danh sách.
 ## 6. Điểm cải thiện so với VLearn cũ
 
 - Có lựa chọn rõ ràng giữa slide Q&A và scientific-paper research.
-- Research không còn trộn nguồn: người dùng biết chính xác paper nào đang được
-  dùng.
+- Research tự mở rộng kiến thức ngoài slide bằng paper khoa học, không yêu cầu
+  học viên phải biết hoặc chọn paper trước.
+- Vẫn có focus paper để kiểm thử hai PDF golden set hoặc học sâu một tài liệu.
 - Có tool arXiv thật để mở rộng kho local ngay trên giao diện.
 - Citation kiểm chứng được tới trang, dòng và quote thay vì chỉ hiển thị tên
   tài liệu.

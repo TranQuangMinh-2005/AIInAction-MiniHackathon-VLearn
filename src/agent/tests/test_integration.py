@@ -8,7 +8,7 @@ from agent.providers import GeminiChat
 from agent.security import validate_input
 from agent.tools import research
 from agent.tools.research import build_arxiv_query
-from server import citations_used_in_answer
+from server import citation_details_used_in_answer, citations_used_in_answer
 
 
 def test_fraud_paper_question_is_not_blocked():
@@ -47,6 +47,21 @@ def test_research_answer_without_marker_returns_no_paper_citation():
         ["paper.pdf - Trang 1 [PAPER-1]"],
         "An answer without a source marker.",
     ) == []
+
+
+def test_combined_paper_markers_keep_each_citation_and_detail():
+    answer = "Supported by two excerpts [PAPER-1, PAPER-2]."
+    citations = [
+        "paper.pdf - Trang 1 [PAPER-1]",
+        "paper.pdf - Trang 3 [PAPER-2]",
+    ]
+    details = [
+        {"label": "PAPER-1"},
+        {"label": "PAPER-2"},
+    ]
+
+    assert citations_used_in_answer(citations, answer) == citations
+    assert citation_details_used_in_answer(details, answer) == details
 
 
 def test_gemini_stream_falls_back_before_first_token():
@@ -105,6 +120,35 @@ def test_local_paper_fast_path_returns_bounded_evidence(monkeypatch):
     assert details[0]["quote"].endswith("exact ending result.")
 
 
+def test_auto_research_reuses_clearly_relevant_indexed_paper(monkeypatch):
+    fake_service = SimpleNamespace(
+        keyword_search=lambda *_args, **_kwargs: [
+            SimpleNamespace(
+                title="Hybrid Retrieval for Hallucination Mitigation",
+                content=(
+                    "Retrieval augmented systems reduce hallucination with "
+                    "external evidence."
+                ),
+                source="rag-paper.pdf",
+            )
+        ]
+    )
+    monkeypatch.setattr(research, "_paper_service", lambda: fake_service)
+    monkeypatch.setattr(
+        research,
+        "query_local_papers",
+        lambda question, source: (f"{question}:{source}", ["citation"], []),
+    )
+
+    result = research.query_relevant_local_paper(
+        "RAG giảm hallucination thế nào?",
+        "retrieval augmented hallucination mitigation",
+    )
+
+    assert result is not None
+    assert result[0].endswith(":rag-paper.pdf")
+
+
 def test_research_node_forces_selected_local_pdf(
     monkeypatch,
 ):
@@ -142,18 +186,70 @@ def test_research_node_forces_selected_local_pdf(
     assert result["citation_details"][0]["source"] == "paper.pdf"
 
 
-def test_research_node_requires_selected_paper():
+def test_research_node_auto_searches_arxiv_without_selected_paper(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        web_search,
+        "_build_research_query",
+        lambda question, slide_context: "retrieval augmented generation",
+    )
+    monkeypatch.setattr(
+        web_search,
+        "query_arxiv_full_text",
+        lambda question, search_query: (
+            f"ARXIV:{question}:{search_query}",
+            ["arxiv-paper.pdf - Trang 2 [PAPER-1]"],
+            [
+                {
+                    "label": "PAPER-1",
+                    "source": "arxiv-paper.pdf",
+                    "page": 2,
+                    "quote": "Evidence",
+                }
+            ],
+        ),
+    )
+    monkeypatch.setattr(
+        web_search,
+        "query_relevant_local_paper",
+        lambda question, search_query: None,
+    )
+
     result = web_search.search_online(
         {
             "user_question": "new topic",
             "paper_source": None,
-            "slide_title": "",
+            "slide_context": "course context",
             "citations": [],
             "citation_details": [],
         }
     )
 
-    assert "chọn một paper" in result["web_search_result"]
+    assert result["web_search_result"].startswith("ARXIV:")
+    assert result["citations"] == [
+        "arxiv-paper.pdf - Trang 2 [PAPER-1]"
+    ]
+
+
+def test_research_node_rejects_out_of_scope_question(monkeypatch):
+    monkeypatch.setattr(
+        web_search,
+        "_build_research_query",
+        lambda question, slide_context: None,
+    )
+
+    result = web_search.search_online(
+        {
+            "user_question": "Thời tiết Paris hôm nay?",
+            "paper_source": None,
+            "slide_context": "AI course",
+            "citations": [],
+            "citation_details": [],
+        }
+    )
+
+    assert "ngoài phạm vi" in result["web_search_result"]
     assert result["citations"] == []
 
 

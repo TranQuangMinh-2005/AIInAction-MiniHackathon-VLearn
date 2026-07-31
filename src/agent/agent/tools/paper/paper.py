@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import html
 import os
 import re
 import time
 import xml.etree.ElementTree as ET
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 import fitz
 import requests
@@ -35,11 +37,11 @@ def _rate_limit():
     _last_request_at = time.monotonic()
 
 
-def _request(url: str, params=None):
+def _request(url: str, params=None, max_attempts: int = 3):
 
     last_response = None
 
-    for i in range(3):
+    for i in range(max_attempts):
 
         _rate_limit()
 
@@ -72,6 +74,87 @@ def _normalize_query(query: str):
     return f'all:"{query}"'
 
 
+def _plain_text(value: str) -> str:
+    return " ".join(
+        html.unescape(re.sub(r"<[^>]+>", " ", value)).split()
+    )
+
+
+def _decode_duckduckgo_url(value: str) -> str:
+    value = html.unescape(value)
+    if value.startswith("//"):
+        value = f"https:{value}"
+    parsed = urlparse(value)
+    redirected = parse_qs(parsed.query).get("uddg", [])
+    return redirected[0] if redirected else value
+
+
+def _search_duckduckgo_arxiv(
+    query: str,
+    max_results: int,
+) -> list[dict[str, Any]]:
+    """Discovery fallback when the official arXiv API is rate-limited."""
+    response = requests.get(
+        "https://html.duckduckgo.com/html/",
+        params={"q": f"site:arxiv.org/abs {query}"},
+        timeout=TIMEOUT,
+        headers={"User-Agent": _user_agent()},
+    )
+    response.raise_for_status()
+    matches = list(
+        re.finditer(
+            r'<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>'
+            r"(.*?)</a>",
+            response.text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+    )
+    papers: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for index, match in enumerate(matches):
+        url = _decode_duckduckgo_url(match.group(1))
+        id_match = re.search(
+            r"arxiv\.org/(?:abs|pdf)/([^/?#]+)",
+            url,
+            flags=re.IGNORECASE,
+        )
+        if not id_match:
+            continue
+        arxiv_id = id_match.group(1).removesuffix(".pdf")
+        if arxiv_id in seen:
+            continue
+        seen.add(arxiv_id)
+        next_start = (
+            matches[index + 1].start()
+            if index + 1 < len(matches)
+            else len(response.text)
+        )
+        result_block = response.text[match.end():next_start]
+        snippet_match = re.search(
+            r'class="result__snippet"[^>]*>(.*?)</a>',
+            result_block,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        papers.append(
+            {
+                "title": _plain_text(match.group(2)),
+                "authors": [],
+                "summary": (
+                    _plain_text(snippet_match.group(1))
+                    if snippet_match
+                    else ""
+                ),
+                "published": "",
+                "updated": "",
+                "abstract_url": f"https://arxiv.org/abs/{arxiv_id}",
+                "pdf_url": f"https://arxiv.org/pdf/{arxiv_id}",
+            }
+        )
+        if len(papers) >= max_results:
+            break
+    return papers
+
+
 
 def _text(node, path, ns):
 
@@ -100,10 +183,30 @@ def arxiv_search(
         "sortOrder": "descending",
     }
 
-    response = _request(ARXIV_API_URL, params=params)
+    try:
+        response = _request(
+            ARXIV_API_URL,
+            params=params,
+            max_attempts=1,
+        )
+    except requests.RequestException:
+        fallback = _search_duckduckgo_arxiv(query, max_results)
+        if fallback:
+            return fallback
+        raise
+    if response.status_code == 429:
+        fallback = _search_duckduckgo_arxiv(query, max_results)
+        if fallback:
+            return fallback
     response.raise_for_status()
 
-    root = ET.fromstring(response.text)
+    try:
+        root = ET.fromstring(response.text)
+    except ET.ParseError:
+        fallback = _search_duckduckgo_arxiv(query, max_results)
+        if fallback:
+            return fallback
+        raise
 
     ns = {
         "atom": "http://www.w3.org/2005/Atom",
@@ -208,5 +311,3 @@ def arxiv_extract_metadata_and_text(paper: dict):
         **paper,
         **pdf,
     }
-
-

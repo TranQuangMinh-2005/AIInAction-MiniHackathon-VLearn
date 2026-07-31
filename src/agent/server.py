@@ -33,6 +33,7 @@ def citations_used_in_answer(
     citations: list[str],
     answer: str,
 ) -> list[str]:
+    used_labels = labels_used_in_answer(answer)
     used: list[str] = []
     unlabeled: list[str] = []
     for citation in citations:
@@ -40,19 +41,32 @@ def citations_used_in_answer(
         if not labels:
             unlabeled.append(citation)
             continue
-        if any(f"[{label}]" in answer for label in labels):
+        if any(label in used_labels for label in labels):
             used.append(citation)
     return unlabeled + used
+
+
+def labels_used_in_answer(answer: str) -> set[str]:
+    """Support both [PAPER-1] and combined [PAPER-1, PAPER-2] markers."""
+    labels: set[str] = set()
+    for marker in re.findall(r"\[([^\]]+)\]", answer):
+        labels.update(
+            part.strip()
+            for part in marker.split(",")
+            if re.fullmatch(r"(?:PAPER|ARXIV)-\d+", part.strip())
+        )
+    return labels
 
 
 def citation_details_used_in_answer(
     details: list[dict],
     answer: str,
 ) -> list[dict]:
+    used_labels = labels_used_in_answer(answer)
     return [
         detail
         for detail in details
-        if f"[{detail.get('label', '')}]" in answer
+        if detail.get("label", "") in used_labels
     ]
 
 
@@ -190,9 +204,14 @@ async def chat(req: ChatRequest):
 
     is_research = req.mode == "research"
     if is_research:
-        # Research has its own fast router; do not spend an embedding + LLM
-        # decision on slides before looking at the selected paper/arXiv.
-        slide_context, citations = "", []
+        # Research uses slide retrieval only as search context; its factual
+        # answer remains grounded in the scientific paper it finds.
+        slide_context, _ = slide_index.retrieve_context(
+            req.question,
+            doc_id=req.active_doc_id,
+            k=2,
+        )
+        citations = []
     else:
         slide_context, rag_citations = slide_index.retrieve_context(
             req.question,
@@ -269,7 +288,12 @@ async def chat_stream(req: ChatRequest):
 
     is_research = req.mode == "research"
     if is_research:
-        slide_context, citations = "", []
+        slide_context, _ = slide_index.retrieve_context(
+            req.question,
+            doc_id=req.active_doc_id,
+            k=2,
+        )
+        citations = []
     else:
         slide_context, rag_citations = slide_index.retrieve_context(
             req.question,
@@ -381,7 +405,14 @@ async def chat_stream(req: ChatRequest):
             history_text = "LỊCH SỬ HỘI THOẠI:\n" + "\n".join(lines) + "\n\n"
 
         active_context = (
-            f'Paper duy nhất được phép dùng: "{req.paper_source}".'
+            (
+                f'Người dùng yêu cầu focus vào paper: "{req.paper_source}".'
+                if req.paper_source
+                else (
+                    "Research tự động tìm paper ArXiv liên quan để mở rộng "
+                    "kiến thức của bài học."
+                )
+            )
             if is_research
             else (
                 f'Học viên đang xem trang {current_page} của tài liệu '

@@ -17,8 +17,8 @@ Bạn là **VLearn Tutor**, trợ lý học tập AI. Chuyển kết quả nghi�
 """
 
 SYSTEM_PROMPT_WEB = """# Identity
-Bạn là **VLearn Tutor**. Đang trả lời từ đúng một paper đã được người dùng
-chọn trong local paper RAG.
+Bạn là **VLearn Research Tutor**. Bạn mở rộng kiến thức trong slide bằng bằng
+chứng lấy từ paper khoa học đã được Research tìm hoặc người dùng chọn.
 
 # Instructions
 1. Không chào hỏi, không "Bạn có muốn...", không bullet points.
@@ -81,7 +81,14 @@ def generate_answer(state: AgentState) -> AgentState:
         history_text = "LỊCH SỬ HỘI THOẠI:\n" + "\n".join(lines) + "\n\n"
 
     active_context = (
-        f'Paper duy nhất được phép dùng: "{paper_source}".'
+        (
+            f'Người dùng yêu cầu focus vào paper: "{paper_source}".'
+            if paper_source
+            else (
+                "Research tự động tìm paper ArXiv liên quan để mở rộng "
+                "kiến thức của bài học."
+            )
+        )
         if state.get("mode") == "research"
         else (
             f'Học viên đang xem trang {current_page} của tài liệu '

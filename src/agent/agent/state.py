@@ -14,7 +14,7 @@ class AgentState(TypedDict):
     slide_context: str                    # Nội dung slide hiện tại (trang đang xem)
     current_page: int                     # Số trang hiện tại
     slide_title: str                      # Tiêu đề slide
-    paper_source: Optional[str]            # PDF bị khóa trong Research mode
+    paper_source: Optional[str]            # PDF focus tùy chọn trong Research
 
     # ── Messages (hội thoại) ──
     messages: Annotated[List[Dict], add_messages]
