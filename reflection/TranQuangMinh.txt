@@ -1,0 +1,3 @@
+
+Trần Quang Minh chịu trách nhiệm thiết kế và phát triển AI Agent, thành phần trung tâm của tính năng Research Mode. AI Agent được xây dựng với khả năng phân tích yêu cầu của người dùng, xác định khi nào cần kích hoạt chế độ nghiên cứu và tự động lựa chọn các tool phù hợp để tìm kiếm tài liệu khoa học. Sau khi thu thập được dữ liệu, Agent điều phối quá trình đưa tài liệu vào hệ thống RAG nhằm hỗ trợ mô hình ngôn ngữ tạo ra câu trả lời có tính chính xác, logic và mang giá trị học thuật cao. Ngoài ra, thành viên còn tham gia kiểm thử và tối ưu luồng hoạt động của Agent để nâng cao hiệu suất và tính ổn định của hệ thống.
+

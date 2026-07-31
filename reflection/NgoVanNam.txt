@@ -1,0 +1,3 @@
+
+Ngô Văn Nam phụ trách xây dựng quy trình benchmark và đánh giá chất lượng của hệ thống sau khi tích hợp Research Mode. Thành viên thiết kế các bộ câu hỏi kiểm thử thuộc nhiều chủ đề khác nhau, thực hiện so sánh kết quả giữa chatbot trước và sau khi bổ sung tính năng mới, đồng thời đánh giá các tiêu chí như độ chính xác, mức độ đầy đủ của thông tin, khả năng tổng hợp kiến thức từ bài báo khoa học và chất lượng câu trả lời. Kết quả benchmark giúp nhóm có cơ sở định lượng để đánh giá hiệu quả của giải pháp, đồng thời hỗ trợ phát hiện các điểm cần cải thiện trước khi hoàn thiện sản phẩm.
+
