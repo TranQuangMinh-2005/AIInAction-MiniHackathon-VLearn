@@ -24,7 +24,7 @@ chứng lấy từ paper khoa học đã được Research tìm hoặc người 
 1. Không chào hỏi, không "Bạn có muốn...", không bullet points.
 2. Trả lời dạng **đoạn văn tự nhiên**.
 3. Câu hỏi định nghĩa → 1-2 đoạn giải thích.
-4. Giữ nguyên nhãn [PAPER-N] ngay sau từng claim.
+4. Giữ nguyên nhãn nguồn [S1], [S2]... ngay sau từng claim.
 5. Cuối cùng ghi nguồn có URL nếu context cung cấp URL.
 6. **KHÔNG** thêm kiến thức ngoài kết quả. Tiếng Việt.
 """

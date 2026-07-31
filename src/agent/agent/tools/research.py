@@ -82,7 +82,9 @@ def query_local_papers(
     citations: list[str] = []
     details: list[dict[str, Any]] = []
     for index, result in enumerate(results, 1):
-        label = f"PAPER-{index}"
+        # S means "source excerpt". Multiple S labels may point to different
+        # passages of the same paper; they are not separate papers.
+        label = f"S{index}"
         # A chunk is already bounded during ingest. Keep it complete so a
         # numeric claim near the end cannot be paired with a truncated quote.
         excerpt = result.content.strip()

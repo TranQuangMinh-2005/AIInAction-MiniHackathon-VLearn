@@ -9,7 +9,11 @@ from agent.security import validate_input
 from agent.tools import research
 from agent.tools.paper import paper as paper_tool
 from agent.tools.research import build_arxiv_query
-from server import citation_details_used_in_answer, citations_used_in_answer
+from server import (
+    AI_UNAVAILABLE_MESSAGE,
+    citation_details_used_in_answer,
+    citations_used_in_answer,
+)
 
 
 def test_fraud_paper_question_is_not_blocked():
@@ -18,6 +22,12 @@ def test_fraud_paper_question_is_not_blocked():
     )
     assert safe is True
     assert reason == ""
+
+
+def test_ai_unavailable_message_is_provider_neutral():
+    assert "Gemini" not in AI_UNAVAILABLE_MESSAGE
+    assert "OpenAI" not in AI_UNAVAILABLE_MESSAGE
+    assert "Dịch vụ AI" in AI_UNAVAILABLE_MESSAGE
 
 
 def test_integrated_rag_paths_are_absolute():
@@ -36,33 +46,42 @@ def test_external_answer_drops_irrelevant_slide_citation():
 def test_stream_only_returns_citations_used_in_answer():
     assert citations_used_in_answer(
         [
-            "paper.pdf - Trang 1 [PAPER-1]",
-            "paper.pdf - Trang 3 [PAPER-2]",
+            "paper.pdf - Trang 1 [S1]",
+            "paper.pdf - Trang 3 [S2]",
         ],
-        "Supported result [PAPER-1].",
-    ) == ["paper.pdf - Trang 1 [PAPER-1]"]
+        "Supported result [S1].",
+    ) == ["paper.pdf - Trang 1 [S1]"]
 
 
 def test_research_answer_without_marker_returns_no_paper_citation():
     assert citations_used_in_answer(
-        ["paper.pdf - Trang 1 [PAPER-1]"],
+        ["paper.pdf - Trang 1 [S1]"],
         "An answer without a source marker.",
     ) == []
 
 
-def test_combined_paper_markers_keep_each_citation_and_detail():
-    answer = "Supported by two excerpts [PAPER-1, PAPER-2]."
+def test_combined_source_markers_keep_each_citation_and_detail():
+    answer = "Supported by two excerpts [S1, S2]."
     citations = [
-        "paper.pdf - Trang 1 [PAPER-1]",
-        "paper.pdf - Trang 3 [PAPER-2]",
+        "paper.pdf - Trang 1 [S1]",
+        "paper.pdf - Trang 3 [S2]",
     ]
     details = [
-        {"label": "PAPER-1"},
-        {"label": "PAPER-2"},
+        {"label": "S1"},
+        {"label": "S2"},
     ]
 
     assert citations_used_in_answer(citations, answer) == citations
     assert citation_details_used_in_answer(details, answer) == details
+
+
+def test_legacy_paper_marker_remains_supported():
+    citation = "paper.pdf - Trang 1 [PAPER-1]"
+
+    assert citations_used_in_answer(
+        [citation],
+        "Legacy answer [PAPER-1].",
+    ) == [citation]
 
 
 def test_gemini_stream_falls_back_before_first_token():
@@ -115,7 +134,7 @@ def test_local_paper_fast_path_returns_bounded_evidence(monkeypatch):
 
     assert evidence in context
     assert citations == [
-        "paper.pdf - Trang 2, dòng 10-12 [PAPER-1]"
+        "paper.pdf - Trang 2, dòng 10-12 [S1]"
     ]
     assert details[0]["line_start"] == 10
     assert details[0]["quote"].endswith("exact ending result.")
@@ -165,7 +184,7 @@ def test_auto_research_reranks_arxiv_before_using_exact_local_cache(
         lambda question, source: (
             f"{question}:{source}",
             ["citation"],
-            [{"label": "PAPER-1"}],
+            [{"label": "S1"}],
         ),
     )
 
@@ -248,10 +267,10 @@ def test_research_node_forces_selected_local_pdf(
         "query_local_papers",
         lambda question, source: (
             f"LOCAL:{question}:{source}",
-            ["paper.pdf - Trang 1, dòng 2-4 [PAPER-1]"],
+            ["paper.pdf - Trang 1, dòng 2-4 [S1]"],
             [
                 {
-                    "label": "PAPER-1",
+                    "label": "S1",
                     "source": source,
                     "page": 1,
                     "line_start": 2,
@@ -273,7 +292,7 @@ def test_research_node_forces_selected_local_pdf(
     )
 
     assert result["web_search_result"] == "LOCAL:question:paper.pdf"
-    assert result["citations"][-1].endswith("[PAPER-1]")
+    assert result["citations"][-1].endswith("[S1]")
     assert result["citation_details"][0]["source"] == "paper.pdf"
 
 
@@ -292,10 +311,10 @@ def test_research_node_auto_searches_arxiv_without_selected_paper(
         "query_arxiv_full_text",
         lambda question, search_query, paper_selector: (
             f"ARXIV:{question}:{search_query}",
-            ["arxiv-paper.pdf - Trang 2 [PAPER-1]"],
+            ["arxiv-paper.pdf - Trang 2 [S1]"],
             [
                 {
-                    "label": "PAPER-1",
+                    "label": "S1",
                     "source": "arxiv-paper.pdf",
                     "page": 2,
                     "quote": "Evidence",
@@ -316,7 +335,7 @@ def test_research_node_auto_searches_arxiv_without_selected_paper(
 
     assert result["web_search_result"].startswith("ARXIV:")
     assert result["citations"] == [
-        "arxiv-paper.pdf - Trang 2 [PAPER-1]"
+        "arxiv-paper.pdf - Trang 2 [S1]"
     ]
 
 

@@ -22,6 +22,11 @@ from agent.tools.paper.paper import arxiv_download_pdf, arxiv_search
 
 app = FastAPI(title="VLearn Agent API")
 
+AI_UNAVAILABLE_MESSAGE = (
+    "Dịch vụ AI đang tạm thời không phản hồi. "
+    "Vui lòng thử lại sau ít phút."
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -48,13 +53,16 @@ def citations_used_in_answer(
 
 
 def labels_used_in_answer(answer: str) -> set[str]:
-    """Support both [PAPER-1] and combined [PAPER-1, PAPER-2] markers."""
+    """Parse current [S1] labels and legacy PAPER/ARXIV markers."""
     labels: set[str] = set()
     for marker in re.findall(r"\[([^\]]+)\]", answer):
         labels.update(
             part.strip()
             for part in marker.split(",")
-            if re.fullmatch(r"(?:PAPER|ARXIV)-\d+", part.strip())
+            if re.fullmatch(
+                r"(?:S\d+|(?:PAPER|ARXIV)-\d+)",
+                part.strip(),
+            )
         )
     return labels
 
@@ -465,10 +473,7 @@ async def chat_stream(req: ChatRequest):
                     "data: "
                     + json.dumps(
                         {
-                            "error": (
-                                "Gemini đang chạm giới hạn tạm thời. "
-                                "Vui lòng thử lại sau vài giây."
-                            )
+                            "error": AI_UNAVAILABLE_MESSAGE
                         }
                     )
                     + "\n\n"
