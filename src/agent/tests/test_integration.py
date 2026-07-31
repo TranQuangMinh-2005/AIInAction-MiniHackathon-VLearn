@@ -121,75 +121,123 @@ def test_local_paper_fast_path_returns_bounded_evidence(monkeypatch):
     assert details[0]["quote"].endswith("exact ending result.")
 
 
-def test_auto_research_reuses_clearly_relevant_indexed_paper(monkeypatch):
+def test_auto_research_reranks_arxiv_before_using_exact_local_cache(
+    monkeypatch,
+):
+    calls = []
+    papers = [
+        {
+            "title": "Narrow RAG Variant",
+            "summary": "A narrow variant.",
+            "abstract_url": "https://arxiv.org/abs/1111.1111",
+            "pdf_url": "https://arxiv.org/pdf/1111.1111",
+        },
+        {
+            "title": "Retrieval Augmented Generation Survey",
+            "summary": "A broad survey.",
+            "abstract_url": "https://arxiv.org/abs/2222.2222",
+            "pdf_url": "https://arxiv.org/pdf/2222.2222",
+        },
+    ]
     fake_service = SimpleNamespace(
-        keyword_search=lambda *_args, **_kwargs: [
-            SimpleNamespace(
-                title="Hybrid Retrieval for Hallucination Mitigation",
-                content=(
-                    "Retrieval augmented systems reduce hallucination with "
-                    "external evidence."
-                ),
-                source="rag-paper.pdf",
-                page=1,
-                keyword_score=0.8,
-            )
-        ]
+        resolve_source=lambda source: (
+            calls.append(("resolve", source)) or source
+        ),
     )
     monkeypatch.setattr(research, "_paper_service", lambda: fake_service)
     monkeypatch.setattr(
         research,
+        "arxiv_search",
+        lambda query, max_results: (
+            calls.append(("search", query, max_results)) or papers
+        ),
+    )
+    monkeypatch.setattr(
+        research,
+        "arxiv_download_pdf",
+        lambda _url: (_ for _ in ()).throw(
+            AssertionError("cached paper must not be downloaded")
+        ),
+    )
+    monkeypatch.setattr(
+        research,
         "query_local_papers",
-        lambda question, source: (f"{question}:{source}", ["citation"], []),
-    )
-
-    result = research.query_relevant_local_paper(
-        "RAG giảm hallucination thế nào?",
-        "retrieval augmented hallucination mitigation",
-    )
-
-    assert result is not None
-    assert result[0].endswith(":rag-paper.pdf")
-
-
-def test_auto_research_ignores_incidental_body_section_match(monkeypatch):
-    validator_calls = []
-    fake_service = SimpleNamespace(
-        keyword_search=lambda *_args, **_kwargs: [
-            SimpleNamespace(
-                title="Wallet Fraud Prevention Through LightGBM",
-                content=(
-                    "CNN and RNN are deep learning examples mentioned in "
-                    "the related work of this fraud paper."
-                ),
-                source="wallet.pdf",
-                page=3,
-                keyword_score=1.0,
-            ),
-            SimpleNamespace(
-                title="Wallet Fraud Prevention Through LightGBM",
-                content=(
-                    "This fraud paper compares deep learning neural networks "
-                    "but proposes LightGBM to minimize false alarms."
-                ),
-                source="wallet.pdf",
-                page=1,
-                keyword_score=0.2,
-            ),
-        ]
-    )
-    monkeypatch.setattr(research, "_paper_service", lambda: fake_service)
-
-    result = research.query_relevant_local_paper(
-        "Cho ví dụ về mô hình deep learning",
-        "deep learning convolutional neural networks examples",
-        topic_validator=lambda query, title, preview: (
-            validator_calls.append((query, title, preview)) or False
+        lambda question, source: (
+            f"{question}:{source}",
+            ["citation"],
+            [{"label": "PAPER-1"}],
         ),
     )
 
-    assert result is None
-    assert len(validator_calls) == 1
+    result = research.query_arxiv_full_text(
+        "RAG là gì?",
+        "retrieval augmented generation survey foundations",
+        paper_selector=lambda _question, _query, _papers: 1,
+    )
+
+    assert calls[0] == (
+        "search",
+        "retrieval augmented generation survey foundations",
+        5,
+    )
+    assert calls[1] == ("resolve", "arxiv-2222.2222.pdf")
+    assert "arxiv-2222.2222.pdf" in result[0]
+
+
+def test_auto_research_downloads_only_the_reranked_arxiv_id(
+    monkeypatch,
+    tmp_path,
+):
+    downloaded = []
+    papers = [
+        {
+            "title": "Incidental Deep Learning Mention",
+            "summary": "A fraud paper that briefly mentions deep learning.",
+            "abstract_url": "https://arxiv.org/abs/1111.1111",
+            "pdf_url": "https://arxiv.org/pdf/1111.1111",
+        },
+        {
+            "title": "Deep Learning Foundations",
+            "summary": "A tutorial on deep learning foundations.",
+            "abstract_url": "https://arxiv.org/abs/2222.2222",
+            "pdf_url": "https://arxiv.org/pdf/2222.2222",
+        },
+    ]
+    fake_service = SimpleNamespace(
+        settings=SimpleNamespace(pdf_dir=tmp_path),
+        resolve_source=lambda _source: None,
+        ingest_directory=lambda reset=False: SimpleNamespace(),
+    )
+    monkeypatch.setattr(research, "_paper_service", lambda: fake_service)
+    monkeypatch.setattr(
+        research,
+        "arxiv_search",
+        lambda _query, max_results: papers,
+    )
+    monkeypatch.setattr(
+        research,
+        "arxiv_download_pdf",
+        lambda url: downloaded.append(url) or b"%PDF-1.4 mock",
+    )
+    monkeypatch.setattr(
+        research,
+        "query_local_papers",
+        lambda question, source: (
+            f"{question}:{source}",
+            ["citation"],
+            [],
+        ),
+    )
+
+    result = research.query_arxiv_full_text(
+        "Deep learning là gì?",
+        "deep learning survey tutorial foundations",
+        paper_selector=lambda _question, _query, _papers: 1,
+    )
+
+    assert downloaded == ["https://arxiv.org/pdf/2222.2222"]
+    assert (tmp_path / "arxiv-2222.2222.pdf").exists()
+    assert "arxiv-2222.2222.pdf" in result[0]
 
 
 def test_research_node_forces_selected_local_pdf(
@@ -235,12 +283,14 @@ def test_research_node_auto_searches_arxiv_without_selected_paper(
     monkeypatch.setattr(
         web_search,
         "_build_research_query",
-        lambda question, slide_context: "retrieval augmented generation",
+        lambda question, slide_context, history: (
+            "retrieval augmented generation"
+        ),
     )
     monkeypatch.setattr(
         web_search,
         "query_arxiv_full_text",
-        lambda question, search_query: (
+        lambda question, search_query, paper_selector: (
             f"ARXIV:{question}:{search_query}",
             ["arxiv-paper.pdf - Trang 2 [PAPER-1]"],
             [
@@ -252,11 +302,6 @@ def test_research_node_auto_searches_arxiv_without_selected_paper(
                 }
             ],
         ),
-    )
-    monkeypatch.setattr(
-        web_search,
-        "query_relevant_local_paper",
-        lambda question, search_query, topic_validator: None,
     )
 
     result = web_search.search_online(
@@ -279,7 +324,7 @@ def test_research_node_rejects_out_of_scope_question(monkeypatch):
     monkeypatch.setattr(
         web_search,
         "_build_research_query",
-        lambda question, slide_context: None,
+        lambda question, slide_context, history: None,
     )
 
     result = web_search.search_online(
@@ -294,6 +339,67 @@ def test_research_node_rejects_out_of_scope_question(monkeypatch):
 
     assert "ngoài phạm vi" in result["web_search_result"]
     assert result["citations"] == []
+
+
+def test_research_query_resolves_follow_up_from_history(monkeypatch):
+    prompts = []
+
+    class FakeLLM:
+        def invoke(self, prompt):
+            prompts.append(prompt)
+            return SimpleNamespace(
+                content=(
+                    "generative adversarial networks limitations "
+                    "training survey"
+                )
+            )
+
+    monkeypatch.setattr(web_search, "llm", FakeLLM())
+
+    query = web_search._build_research_query(
+        "Nó có nhược điểm gì?",
+        "AI, ML and Deep Learning",
+        [
+            {"role": "user", "content": "GAN là gì?"},
+            {
+                "role": "assistant",
+                "content": "GAN là Generative Adversarial Network.",
+            },
+        ],
+    )
+
+    assert query.startswith("generative adversarial networks")
+    assert "GAN là gì?" in prompts[0]
+    assert "Nó có nhược điểm gì?" in prompts[0]
+
+
+def test_arxiv_reranker_prefers_foundational_candidate(monkeypatch):
+    prompts = []
+
+    class FakeLLM:
+        def invoke(self, prompt):
+            prompts.append(prompt)
+            return SimpleNamespace(content="2")
+
+    monkeypatch.setattr(web_search, "llm", FakeLLM())
+
+    selected = web_search._select_best_arxiv_paper(
+        "GAN là gì?",
+        "generative adversarial networks survey foundations",
+        [
+            {
+                "title": "FIS-GAN",
+                "summary": "A flow importance sampling GAN variant.",
+            },
+            {
+                "title": "Generative Adversarial Networks: An Overview",
+                "summary": "A broad tutorial and survey of GAN foundations.",
+            },
+        ],
+    )
+
+    assert selected == 1
+    assert "tránh biến thể hẹp" in prompts[0]
 
 
 def test_arxiv_query_removes_demo_instruction_words():

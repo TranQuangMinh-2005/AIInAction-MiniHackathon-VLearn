@@ -17,6 +17,7 @@ from agent.llm import llm
 from langchain_core.messages import SystemMessage, HumanMessage
 from local_rag.agent_tool import ask_research_papers
 from local_rag.service import RAGService
+from agent.nodes.web_search import _select_best_arxiv_paper
 from agent.tools.paper.paper import arxiv_download_pdf, arxiv_search
 
 app = FastAPI(title="VLearn Agent API")
@@ -122,13 +123,18 @@ def import_arxiv_paper(req: PaperImportRequest):
     if not query:
         raise HTTPException(status_code=400, detail="Query không được trống.")
     try:
-        matches = arxiv_search(query, max_results=1)
+        matches = arxiv_search(query, max_results=5)
         if not matches:
             raise HTTPException(
                 status_code=404,
                 detail="Không tìm thấy paper phù hợp trên arXiv.",
             )
-        paper = matches[0]
+        selected_index = (
+            _select_best_arxiv_paper(query, query, matches)
+            if len(matches) > 1
+            else 0
+        )
+        paper = matches[selected_index]
         pdf_url = paper.get("pdf_url", "")
         if not pdf_url:
             raise HTTPException(

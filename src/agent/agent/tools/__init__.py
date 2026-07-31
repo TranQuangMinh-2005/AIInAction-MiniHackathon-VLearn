@@ -3,7 +3,6 @@ from agent.tools.research import (
     query_arxiv,
     query_arxiv_full_text,
     query_local_papers,
-    query_relevant_local_paper,
 )
 
 __all__ = [
@@ -12,5 +11,4 @@ __all__ = [
     "query_arxiv",
     "query_arxiv_full_text",
     "query_local_papers",
-    "query_relevant_local_paper",
 ]

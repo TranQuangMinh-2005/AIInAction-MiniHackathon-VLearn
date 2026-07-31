@@ -70,9 +70,11 @@ npm run dev
 Mở <http://localhost:3000>.
 
 - **Normal**: trả lời theo slide VLearn như hệ thống cũ.
-- **Research mặc định**: dùng câu hỏi và ngữ cảnh slide để tạo truy vấn tiếng
-  Anh; ưu tiên tái sử dụng paper phù hợp đã index, nếu chưa có thì tự tìm một
-  paper trên arXiv, tải PDF, index và trả lời từ full text.
+- **Research mặc định**: viết lại câu hỏi thành truy vấn độc lập từ lịch sử và
+  ngữ cảnh slide, tìm nhiều ứng viên trên arXiv rồi rerank theo title/abstract.
+  Với câu hỏi tổng quan, hệ thống ưu tiên survey/tutorial/paper nền tảng thay vì
+  biến thể hẹp. Chỉ sau khi chọn được một arXiv ID cụ thể, hệ thống mới dùng PDF
+  local làm cache hoặc tải, index và trả lời từ full text.
 - **Focus paper (tùy chọn)**: chọn một paper khi muốn kiểm thử hoặc chỉ hỏi sâu
   đúng tài liệu đó. Không cần chọn paper để gửi câu hỏi Research.
 - **Thêm từ arXiv**: nhập chủ đề, tool tải một PDF phù hợp nhất, index vào local
@@ -130,9 +132,10 @@ Khởi động trước giờ demo, chạy health và mở sẵn UI.
 5. Nếu còn thời gian, nhập một chủ đề ngắn ở ô arXiv, bấm **Thêm**, rồi hỏi
    một câu trên paper vừa được chọn.
 
-Nên nhập thử đúng chủ đề arXiv dự định demo trước buổi trình bày để xác nhận
-paper kết quả đầu tiên phù hợp và thời gian tải PDF ổn. Không cần gọi arXiv lại
-khi paper đã nằm trong danh sách.
+Nên kiểm tra kết nối arXiv và OpenAI trước buổi trình bày. Auto Research vẫn
+tìm và rerank động theo từng chủ đề; paper local không tự được chọn chỉ vì có
+vài từ khóa trùng. Khi người dùng chọn rõ một paper trong dropdown, hệ thống
+mới bỏ qua tìm kiếm arXiv và khóa retrieval vào paper đó.
 
 ## 6. Điểm cải thiện so với VLearn cũ
 

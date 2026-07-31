@@ -16,21 +16,8 @@ load_environment()
 _ARXIV_CACHE: dict[
     str, tuple[str, list[str], list[dict[str, Any]]]
 ] = {}
-_GENERIC_RESEARCH_TERMS = {
-    "about",
-    "analysis",
-    "approach",
-    "generation",
-    "language",
-    "large",
-    "method",
-    "model",
-    "models",
-    "research",
-    "study",
-    "system",
-    "using",
-}
+
+PaperSelector = Callable[[str, str, list[dict[str, Any]]], int]
 
 
 @lru_cache(maxsize=1)
@@ -127,70 +114,27 @@ def query_local_papers(
     return context, citations, details
 
 
-def query_relevant_local_paper(
-    question: str,
-    search_query: str,
-    topic_validator: Callable[[str, str, str], bool] | None = None,
-) -> tuple[str, list[str], list[dict[str, Any]]] | None:
-    """Reuse an indexed paper when it clearly matches the research query."""
-    terms = {
-        token
-        for token in re.findall(r"[a-z0-9-]+", search_query.casefold())
-        if len(token) >= 4 and token not in _GENERIC_RESEARCH_TERMS
-    }
-    if len(terms) < 2:
-        return None
-
-    service = _paper_service()
-    # A mention in an arbitrary body section is not enough to classify the
-    # whole paper as relevant. Only title/abstract/introduction pages are used
-    # for this cheap reuse gate.
-    candidates = [
-        candidate
-        for candidate in service.keyword_search(search_query, top_k=30)
-        if candidate.page <= 2
-    ]
-    if not candidates:
-        return None
-
-    ranked: list[tuple[int, float, Any]] = []
-    for candidate in candidates:
-        searchable = f"{candidate.title} {candidate.content}".casefold()
-        overlap = sum(term in searchable for term in terms)
-        ranked.append(
-            (
-                overlap,
-                float(getattr(candidate, "keyword_score", 0.0)),
-                candidate,
-            )
-        )
-    overlap, _, best = max(ranked, key=lambda item: (item[0], item[1]))
-    required = min(3, len(terms))
-    if overlap < required:
-        return None
-    if topic_validator and not topic_validator(
-        search_query,
-        best.title,
-        best.content,
-    ):
-        return None
-
-    return query_local_papers(question, best.source)
-
-
 def query_arxiv_full_text(
     question: str,
     search_query: str,
+    paper_selector: PaperSelector | None = None,
 ) -> tuple[str, list[str], list[dict[str, Any]]]:
-    """Find one relevant arXiv paper, index its PDF, then query full text."""
+    """Search/rerank arXiv, then use local storage only for the chosen ID."""
     papers: list[dict[str, Any]] = arxiv_search(
         search_query,
-        max_results=1,
+        max_results=5,
     )
     if not papers:
         return "", [], []
 
-    paper = papers[0]
+    selected_index = (
+        paper_selector(question, search_query, papers)
+        if paper_selector and len(papers) > 1
+        else 0
+    )
+    if not 0 <= selected_index < len(papers):
+        selected_index = 0
+    paper = papers[selected_index]
     pdf_url = paper.get("pdf_url", "")
     if not pdf_url:
         return "", [], []
@@ -214,7 +158,9 @@ def query_arxiv_full_text(
         temporary.replace(destination)
         service.ingest_directory(reset=False)
 
-    context, citations, details = query_local_papers(question, source)
+    # The search query is a standalone, history-resolved question. It is more
+    # useful for retrieval than a follow-up such as "Nó có nhược điểm gì?".
+    context, citations, details = query_local_papers(search_query, source)
     title = " ".join(paper.get("title", "").split())
     abstract_url = paper.get("abstract_url", "")
     for detail in details:
