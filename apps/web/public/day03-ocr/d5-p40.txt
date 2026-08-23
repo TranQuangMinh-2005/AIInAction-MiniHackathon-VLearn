@@ -1,0 +1,14 @@
+Trace Ví Dụ: Tìm Chuyên Bay HAN -› HCM (2/2) X vNUNvensrrv
+
+Observation 2: Nhiệt độ 27-32C, xác suất mưa 70%.
+
+Thought 3: Tôi đã có cả lựa chọn chuyến bay và dữ liệu thời tiết. Có thể kết luận.
+
+Final Answer: Gợi ý chuyến 06:10 giá 1.75M; mang áo mỏng, giày dễ khô, ô gập hoặc áo
+
+mưa nhẹ.
+
+Điểm mạnh không chỉ là answer tốt hơn, mà là con người nhìn được agent đã hành động
+dựa trên quan sát nào.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 27/62

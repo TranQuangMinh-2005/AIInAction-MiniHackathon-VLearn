@@ -1,0 +1,12 @@
+Sự tương quan giữa con người và Agent \W vNuwvcnsrrv
+
+Con người Agent
+Não — phân tích, ra quyết định - - - - - - - - - > Reasoning — LLM suy luận
+Mắt, tai — nhận thông tin - - - - - -- » Perception — user input, tool output
+Tay, chân, công cụ — hành động - - - - - - - - > Action — gọi tool, trả lời user
+Trí nhớ — ghi nhớ kinh nghiệm - - - - - - - - - > Memory — context, database
+
+Agent cũng lặp: quan sát -› suy nghĩ —› hành động -—› ghi nhớ, giống cách con người
+giải quyết vấn đề.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 16/44

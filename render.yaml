@@ -1,0 +1,71 @@
+# Render Blueprint — VLearn Research Tutor
+# Cách dùng: Render Dashboard → "New +" → "Blueprint" → chọn repo này.
+#   Hoặc: tạo 2 Web Service (Docker) thủ công với các giá trị dưới đây.
+#
+# ⚠️ LƯU Ý:
+# - Persistent Disk CHỈ khả dụng ở gói trả phí (Starter trở lên) — free plan
+#   sẽ mất index/paper/memory mỗi lần deploy. Nếu không có disk, bỏ block disk
+#   và dữ liệu sẽ reset (bài học slide vẫn OK — nằm trong image).
+# - Sau deploy LẦN 1, cập nhật các biến chứa URL thật (NEXT_PUBLIC_AGENT_API_URL,
+#   CORS_ORIGINS) rồi Redeploy.
+
+services:
+  # ─────────────────────────── API ───────────────────────────
+  - type: web
+    name: vlearn-api
+    runtime: docker
+    repo: https://github.com/mronion112/Batch03-K4-AI-Product-Hackathon
+    plan: starter          # cần paid để gắn disk
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: >
+      sh -c "cd /app/apps/api &&
+      PYTHONPATH=/app/apps/api:/app/libs/rag/src python -m uvicorn
+      server:app --host 0.0.0.0 --port ${PORT:-8001}"
+    healthCheckPath: /api/health
+    numInstances: 1
+    disk:
+      name: vlearn-data
+      mountPath: /var/lib/vlearn-data
+      sizeGB: 1
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false            # nhập giá trị trên Dashboard sau khi tạo
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: RAG_PROVIDER
+        value: openai
+      - key: RAG_CHAT_MODEL
+        value: gpt-4o-mini
+      - key: RAG_EMBEDDING_MODEL
+        value: text-embedding-3-large
+      # ── Persistent disk: toàn bộ dữ liệu local trỏ vào mount ──
+      - key: RAG_INDEX_PATH
+        value: /var/lib/vlearn-data/rag/index.sqlite3
+      - key: RAG_PDF_DIR
+        value: /var/lib/vlearn-data/papers
+      - key: VLEARN_MEMORY_DIR
+        value: /var/lib/vlearn-data/memory
+      - key: VLEARN_OBS_DIR
+        value: /var/lib/vlearn-data/observability
+      # CORS: thêm origin web thật sau deploy lần 1 (comma-separated)
+      - key: CORS_ORIGINS
+        value: https://vlearn-web.onrender.com
+
+  # ─────────────────────────── WEB ───────────────────────────
+  - type: web
+    name: vlearn-web
+    runtime: docker
+    repo: https://github.com/mronion112/Batch03-K4-AI-Product-Hackathon
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: >
+      sh -c "cd /app/apps/web && npm run build && npm run start -- -p ${PORT:-3000}"
+    healthCheckPath: /
+    numInstances: 1
+    envVars:
+      # BẮT BUỘC set lại: URL thật của service api sau deploy lần 1,
+      # vd: https://vlearn-api.onrender.com — rồi Redeploy để build lại
+      - key: NEXT_PUBLIC_AGENT_API_URL
+        sync: false

@@ -1,0 +1,12 @@
+3 Làm Tưởng Phỏ Biến Về Agent \ieevrerv
+
+“Dùng LLM = đã là agent”
+Thực tế: Agent cần loop (quyết định —› hành động —› quan sát —› lặp). LLM call 1 lần = chatbot.
+
+“Agent thông minh hơn = luôn tốt hơn”
+Thực tế: Agent đắt hơn ~-4.5x, chậm hơn ~-4x, khó debug hơn. FAQ dùng agent = lãng phí tiền và thời gian.
+
+“Thêm nhiều tool = agent mạnh hơn”
+Thực tế: Nhiều tool = agent dễ chọn sai. Tool ít nhưng description rõ ràng > tool nhiều nhưng mơ hồ.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 13/62

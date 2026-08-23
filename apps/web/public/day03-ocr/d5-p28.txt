@@ -1,0 +1,18 @@
+Anatomy Của Một Tool Definition Hồ): \ vNuNvrnsirv
+
+5 thành phần bắt buộc trong mỗi tool definition:
+
+Name: rõ ràng, động từ + danh từ — search_ fLights, không phải do_stuff
+Description: 1 câu ngắn nói tool LÀM GÌ và KHI NÀO dùng
+Parameters: type, required/optional, constraints (ví dụ: IATA code, YYYY-MM-DD)
+
+Return format: JSON schema hoặc mô tả rõ output
+
+mự. w w
+
+Error modes: tool có thể fail thế nào (timeout, empty result, invalid input)
+
+Lưu ý: Thiếu bắt kỳ thành phần nào -› agent sẽ đoán mò -› chọn sai tool hoặc truyền sai
+args.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 20/62

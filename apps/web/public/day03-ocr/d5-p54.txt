@@ -1,0 +1,14 @@
+Từ ReAct Đến LangGraph XVố VNUNIVERSITY
+
+tool call observation Condidonal done
+| seempe TR LLM Node Tool Node Edge Final Answer
+
+continue
+
+m ReAct loop bằng tay phù hợp để học bản chất
+=m LangGraph giúp biểu diễn state, nodes, edges, conditional routing rõ hơn
+
+= Khi workflow nhiều nhánh hoặc cần persist state, graph approach dễ maintain hơn
+loop ad-hoc
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 42/62

@@ -1,0 +1,14 @@
+ReAct IMolojob Thought —> Action —› Observation \ vNuNvensirv
+
+chưa đủ
+
+Though - Action Observation
+phân tích bước tiêp tool_name(args) kêt quả tool
+
+⁄
+Final Answer
+
+ReAct mạnh vì trace lý do hành động được bộc lộ ra ngoài, giúp con người debug và
+can thiệp dễ hơn so với chỉ nhìn final answer.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 25/62

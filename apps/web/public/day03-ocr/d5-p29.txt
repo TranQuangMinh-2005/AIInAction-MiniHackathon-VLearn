@@ -1,0 +1,24 @@
+Tool Description: LẺ VS Tốt XVố VNUNIVERSITY
+
+Tệ — Agent sẽ đoán mò
+
+Tốt — Agent hiểu rõ
+
+name: do_stuff name: search_ftLights
+
+description: ``Hàm tìm ki[] m'' description: ``Search avaitabte fLights
+args: input (any) between two airports on a specific date,
+return: không ghi fiLtered by max price in VND''
+
+error: không ghi args: origin (str, TATA), destination (str,
+
+TATA), date (str, YYYY-MM-DD), max_price
+(int, VND)
+
+return: {fLights: [{airLine, time, price}]}
+error: empty List if none; TimeoutError
+after 5s
+
+—> Agent không biết khi nào gọi, truyền gì, nhận gì.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 21/62

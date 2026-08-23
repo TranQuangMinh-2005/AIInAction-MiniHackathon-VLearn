@@ -1,0 +1,18 @@
+Cost Ở Scale: 1K —› 1M Queries/Ngày \yý vNuNvrnsiTv
+
+Scale Chatbot/ngày Agent/ngày Chênh lệch
+
+1K queries $0.20 $0.90 $0.70
+
+10K queries $2.00 $9.00 $7.00
+
+100K queries $20 $90 $70
+
+1M queries $200 $900 $700/ngày =
+$21K/tháng
+
+Nếu chatbot hallucinate 30% queries —› cost of wrong answers (refund, lost trust, support tickets) có thể > cost of agent.
+
+Câu hỏi không phải “đắt hay rẻ?” mà là “accuracy gain có jusfify cost increase không?”
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 44/62

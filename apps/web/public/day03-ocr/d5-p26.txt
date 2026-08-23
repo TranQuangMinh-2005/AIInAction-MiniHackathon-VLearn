@@ -1,0 +1,16 @@
+Tool Calling = Tay Chân Của Agent \ự vNuNvcnsirv
+
+final answer
+
+[Em -
+
+JSON/ args
+[mac DE=¬ /DB/ Seanh,
+
+observation
+
+m Tool definitions phải rõ input / output / error mode
+m Agent mạnh lên nhờ tool, nhưng cũng dễ fail hơn vì external dependency
+m Tool calling là cầu nối giữa reasoning trong model và hành động ngoài thế giới thực
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 19/62

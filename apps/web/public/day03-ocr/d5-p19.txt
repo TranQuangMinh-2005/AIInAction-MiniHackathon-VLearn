@@ -1,0 +1,12 @@
+Anti-Patterns: Khi Dùng Agent Là Sai Bài NV VN0vvensrv
+
+Bài toán 1 bước: hỏi đáp, tra FAQ, phân loại cơ bản
+
+Không có tool nào đề gọi: agent chỉ “suy nghĩ” nhưng không hành động được
+Mọi thứ phải 100% deterministic: mỗi sai sót đều rất đắt
+
+Chỉ phí latency không chấp nhận được: loop 3-5 bước là đã quá chậm
+
+4i Nguyên tắc: luôn benchmark rule / workflow / chatbot trước khi mở agent loop
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 12/62

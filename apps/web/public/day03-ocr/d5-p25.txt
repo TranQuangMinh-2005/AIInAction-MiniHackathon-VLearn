@@ -1,0 +1,31 @@
+Tool Calling Hoạt Động Như Thế Nào? NV wvensrv
+
+# 1. Mo ta tooL cho LLM biet
+prompt = """
+
+Ban co the goi cac tooL sau:
+
+- search_ftLights(origin, dest, date, max price)
+
+- get_weather(city, date)
+
+đfa pL0i DaHgQ JS0N? (C2 tö0Lẽ Sang (005: (277
+Neu du thong tin, tra loi: {"answer": "..."}
+
+na
+
+# 2. LLM tra ve structured output
+
+response = catLL_LIm(prompt + user_message)
+
+# => {"tooL": "search_ftLights",
+
+# :äf'0S200 C01017 5 HẦN? 06SL 5 o90N.,
+
+# "date": "2026-03-18", "max_price": 2000000}}
+
+# 3. Parse va goi tooT
+parsed = json. Loads ( response)
+resutLt = run_tooL(parsed["toot"], parsed["args”])
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 19/44

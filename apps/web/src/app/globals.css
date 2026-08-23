@@ -1,0 +1,235 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* ============================================================
+   VLearn Design System v2 — theo DESIGN.md §4 (vlearn-ux-team)
+   1 ACCENT duy nhất (navy) · neutral 1 họ · shadow nhuốm navy
+   ============================================================ */
+
+@theme {
+  /* ---------- ACCENT — VLearn Navy (giữ #134D8B làm lõi, hiệu chỉnh bão hoà) ---------- */
+  --color-brand-50: #eff5fb; /* tint cho selected/ngữ cảnh */
+  --color-brand-100: #deebf7;
+  --color-brand-200: #bdd6ee;
+  --color-brand-300: #8fb8e1;
+  --color-brand-400: #548dcc;
+  --color-brand-500: #2a67a9;
+  --color-brand-600: #134d8b; /* PRIMARY — nút, link, selected (giữ nguyên) */
+  --color-brand-700: #103f72;
+  --color-brand-800: #0d335c;
+  --color-brand-900: #0a2847;
+  --color-brand-950: #061a30;
+
+  /* ---------- NEUTRAL — một họ slate nhuốm xanh duy nhất ---------- */
+  --color-canvas: #f1f4f8; /* nền viewer */
+  --color-surface: #ffffff; /* panel/card */
+  --color-surface-2: #f7f9fc; /* nền phụ, hover nhẹ */
+  --color-border: #e3e8ef; /* hairline khi BẮT BUỘC (hạn chế dùng) */
+  --color-border-strong: #c9d2de;
+  --color-ink: #1e293b; /* body text */
+  --color-ink-strong: #0f172a; /* heading */
+  --color-ink-muted: #46556a; /* text phụ */
+  --color-ink-faint: #64748b; /* placeholder/icon phụ */
+
+  /* ---------- FUNCTIONAL — chỉ cho trạng thái thật ---------- */
+  --color-danger: #d6222f; /* lỗi (đồng bộ đỏ logo VLearn) */
+  --color-warning: #b45309; /* cảnh báo (rate limit, mất kết nối) */
+  --color-success: #15803d; /* thành công (import xong, đã lưu) */
+
+  /* ---------- FONTS — next/font variables (layout.tsx): Geist + Geist Mono ---------- */
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+
+  /* ---------- TYPE SCALE — §4.2 ---------- */
+  --text-display: 1.75rem; /* 28px — tiêu đề lớn (hiếm dùng) */
+  --text-display--line-height: 2.25rem;
+  --text-display--font-weight: 600;
+  --text-display--letter-spacing: -0.02em;
+
+  --text-title-xl: 1.25rem; /* 20px — tiêu đề panel chính */
+  --text-title-xl--line-height: 1.75rem;
+  --text-title-xl--font-weight: 600;
+  --text-title-xl--letter-spacing: -0.01em;
+
+  --text-title: 1rem; /* 16px — header panel, tên tài liệu */
+  --text-title--line-height: 1.5rem;
+  --text-title--font-weight: 600;
+
+  --text-body: 0.875rem; /* 14px — base toàn UI */
+  --text-body--line-height: 1.375rem;
+  --text-body--font-weight: 400;
+
+  --text-body-sm: 0.8125rem; /* 13px — meta, context line */
+  --text-body-sm--line-height: 1.25rem;
+  --text-body-sm--font-weight: 400;
+
+  --text-caption: 0.75rem; /* 12px — số trang, chip */
+  --text-caption--line-height: 1.125rem;
+  --text-caption--font-weight: 500;
+
+  --text-overline: 0.6875rem; /* 11px — label nhóm, uppercase */
+  --text-overline--line-height: 1rem;
+  --text-overline--font-weight: 600;
+  --text-overline--letter-spacing: 0.08em;
+
+  --text-mono: 0.75rem; /* 12px — Geist Mono: số liệu, quote, đồng hồ */
+  --text-mono--line-height: 1.125rem;
+  --text-mono--font-weight: 400;
+  --text-mono--font-family: var(--font-mono);
+
+  /* ---------- SHAPE LOCK — 1 hệ radius + spacing (quy ước §4.3) ---------- */
+  --radius-xs: 4px; /* corner của bubble */
+  --radius-sm: 6px; /* chip nhỏ */
+  --radius-md: 8px; /* input, button, select */
+  --radius-lg: 12px; /* card, slide page, citation card */
+  --radius-xl: 16px; /* bubble chat, panel lớn, popover */
+
+  /* ---------- SHADOW — nhuốm navy, tối đa 2 lớp ---------- */
+  --shadow-xs: 0 1px 2px rgb(10 41 73 / 0.05);
+  --shadow-sm: 0 1px 2px rgb(10 41 73 / 0.06), 0 1px 3px rgb(10 41 73 / 0.08);
+  --shadow-md: 0 2px 4px rgb(10 41 73 / 0.06), 0 4px 12px rgb(10 41 73 / 0.09);
+  --shadow-lg: 0 4px 8px rgb(10 41 73 / 0.08), 0 8px 24px rgb(10 41 73 / 0.13);
+  --shadow-page: 0 1px 2px rgb(10 41 73 / 0.08), 0 4px 16px rgb(10 41 73 / 0.1); /* trang PDF */
+
+  /* ---------- MOTION — chỉ transform/opacity, cubic-bezier riêng ---------- */
+  --ease-quick: cubic-bezier(0.2, 0, 0, 1); /* hover/color 150ms */
+  --ease-panel: cubic-bezier(0.2, 0, 0, 1); /* panel slide 240ms */
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1); /* popover scale-in 200ms */
+
+  /* ---------- ANIMATIONS — chỉ transform/opacity ---------- */
+  --animate-fade-in: fade-in 200ms var(--ease-quick) both;
+  --animate-shimmer: shimmer 1.6s var(--ease-quick) infinite;
+  --animate-scale-in: scale-in 200ms var(--ease-pop) both;
+  --animate-fade-up: fade-up 200ms var(--ease-quick) both; /* stagger citation/chip */
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    height: 100%;
+  }
+
+  body {
+    height: 100%;
+    background-color: var(--color-surface-2);
+    color: var(--color-ink);
+    /* Base toàn UI = text-body 14px (Geist self-host qua next/font) */
+    font-family: var(--font-geist), ui-sans-serif, system-ui,
+      -apple-system, "Segoe UI", sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.375rem;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-100);
+    color: var(--color-brand-900);
+  }
+}
+
+@layer components {
+  /* Skeleton — khối trắng tỉ lệ 4:3, shimmer opacity 60↔100 chu kỳ 1.5s (G6) */
+  .skeleton {
+    background-color: var(--color-surface);
+    animation: shimmer 1.6s var(--ease-quick) infinite;
+  }
+
+  /* M1 — Tailwind v4 không emit font-family từ --text-mono--font-family;
+     rule rõ ràng để .text-mono thực sự dùng Geist Mono (DESIGN.md §4.2) */
+  .text-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-faint);
+}
+
+/* Flash highlight trang đích khi jump-to-page từ citation (1.2s, ring brand-400 fade) */
+.page-flash {
+  animation: page-flash 1.2s var(--ease-quick) both;
+}
+
+@keyframes page-flash {
+  0% {
+    outline: 2px solid var(--color-brand-400);
+    outline-offset: 3px;
+  }
+  100% {
+    outline: 2px solid transparent;
+    outline-offset: 3px;
+  }
+}
+
+/* A11y — mọi animation tôn trọng prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

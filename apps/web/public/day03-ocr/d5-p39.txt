@@ -1,0 +1,16 @@
+Trace Ví Dụ: Tìm Chuyên Bay HAN -› HCM (1/2) X vNUNvensrrv
+
+Thought 1: Tôi cần tìm chuyến bay sáng mai từ HAN tới HCM dưới 2 triệu.
+Action 1: search_flights(origin=”"HAN”, destination=”SGN”,  date=”2026-03-18”,
+max_ price=2000000)
+
+Observation 1: Có 2 lựa chọn phù hợp: VietJet 06:10 giá 1.75M, Vietnam Airlines 08:20
+giá 1.95M.
+
+Thought 2: User cũng hỏi về trang phục nếu trời mưa. Tôi cần check thời tiết tại HCM.
+Action 2: get_weather(city=”Ho Chi Minh City”, date=”2026-03-18”)
+
+17/03/2026 26/62
+
+\W‡J) .
+Giảng viên (VinUni)

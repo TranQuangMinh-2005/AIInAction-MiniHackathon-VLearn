@@ -1,0 +1,12 @@
+3 Lớp Defense Cho Agent Production XVố VNUNIVERSITY
+
+User Lớp 4 Lớp 2 Lớp 3 esponse
+Input Guard Tool Guard Output Guard
+Filter user input Sanitize tool output Check final answer
+(PII, injection, off-topic) whitelist tools hallucination detection
+rate limit calls human review if high-risk
+
+Low risk (FAQ): Lớp 1 —> LLM —› Lớp 3 —› User. _Medium (search): +Lóp2. High (booking): + Human review
+trước khi trả user.
+
+Giảng viên (VinUni) AIGB - Ngày 3 17/03/2026 46/62

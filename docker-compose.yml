@@ -1,0 +1,21 @@
+services:
+  api:
+    build: .
+    command: >
+      sh -c "cd /app/apps/api &&
+      PYTHONPATH=/app/apps/api:/app/libs/rag/src python -m uvicorn server:app --host 0.0.0.0 --port 8001"
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    volumes:
+      - ./libs/rag/data:/app/libs/rag/data
+  web:
+    build: .
+    command: sh -c "cd /app/apps/web && npm run build && npm run start -- -p 3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_AGENT_API_URL: http://localhost:8001

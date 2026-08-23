@@ -1,0 +1,10 @@
+Deliverable Cuối Ngày XVố VNUNIVERSITY
+
+Chatbot baseline + ReAct agent cho cùng một bài toán, kèm trace và flowchart luồng
+xử lý
+
+m 5 test cases để so sánh chatbot và agent
+m 1race Thought / Action / Observation của agent
+m 1 nhận định rõ: khi nào chatbot đủ, khi nào agent vượt trội
+
+Giảng viên (VinUni) AIGB - Ngày 3 17/03/2026 3/62

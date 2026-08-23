@@ -1,0 +1,14 @@
+®4/Ƒ-)4916)! - Tool XVố VNUNIVERSITY
+JSON /args
+Tool Calling
+(Thought) (Action)
+
+Tool Descriptions
+Final Answer
+
+name, args, output
+
+LLM đọc mô tả tool, quyết định gọi tool nào, trả về JSON. Nhưng chỉ chạy 1 lần —
+chưa biết kết quả tool.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 18/44

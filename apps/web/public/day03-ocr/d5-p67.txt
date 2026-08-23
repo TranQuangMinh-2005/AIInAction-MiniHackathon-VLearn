@@ -1,0 +1,16 @@
+Hybrid Pattern: Thực Dụng Hơn Cực Đoan XVố VNUNIVERSITY
+
+Simple Chatbot
+simple path
+
+S
+User Query Intent / Triage
+=
+
+multi-step Agent fallback
+path Human / Escalation
+
+Không cần chọn một phe. Thiết kế tốt thường là: triage nhanh, câu đơn giản đi
+chatbot path, câu phức tạp mới mở agent loop.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 52/62

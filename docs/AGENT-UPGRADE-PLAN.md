@@ -560,3 +560,97 @@ root: pyproject.toml · Makefile · docker-compose.yml · .env.example · .gitig
 - **Artifact khi fail:** pytest.xml · web-build.log · gate_results_*.md + gate-dry.json.
 
 **Lưu ý quan trọng (đã kiểm chứng local):** (1) `pytest` KHÔNG nằm trong `requirements.txt` → job api-tests cài `pytest` riêng. (2) Bắt buộc `PYTHONPATH=apps/api:libs/rag/src` để resolve `local_rag` (chạy `pytest apps/api` không có PYTHONPATH → ModuleNotFoundError) — khớp `make test` trong Makefile. (3) **Fix requirements.txt:** mô phỏng CI với venv sạch bắt được 2 test rớt (`test_gemini_clients.py` — `ModuleNotFoundError: No module named 'google'`): `requirements.txt` thiếu `google-genai` (pyproject khai nhưng file pin không có; gemini_clients import lazy trong `embed()`). Đã thêm `google-genai==2.19.0` → mô phỏng lại **137/137 PASS**. Máy sạch chạy CI mà thiếu dòng này sẽ đỏ — pipeline chặn merge bắt được đúng loại lỗi này.
+
+### t32 — P0-1 Dedupe mã doc (citation short/full hết nhảy nhầm) (Dev2)
+
+**Scheme đã chốt (gợi ý PO2, áp dụng luôn):** short hackathon d1/d2 GIỮ "D1"/"D2" (bản user quen); full Day1/Day2 (d3/d4) đổi "D1-F"/"D2-F" — unique + mnemonic ("F" = full). Các doc khác giữ doc_id.upper() (d5→"D5", d13→"D13", day05-ref→"DAY05-REF") — vốn không trùng.
+
+**Sửa đồng bộ (3 file):**
+- apps/api/agent/rag.py: `citation_label()` + `_DOC_LABELS` — context header + citations dùng label mới (d3 → "D1-F - Trang N").
+- apps/web/src/components/slideDocs.ts: code d3 "D01"→"D1-F", d4 "D02"→"D2-F" (sidebar/switcher hiển thị đúng).
+- apps/web/src/components/ChatPanel.tsx: `decodeCitationDoc()` — CITATION_FULL_RE ("D1-F"/"D2-F" → d3/d4) + CITATION_LEGACY_RE ("D1..D16"/DAY05-REF → doc_id, backward-compat citation cũ trong history); isSlide chip regex nhận cả 2 dạng.
+
+**Verify:** pytest **112/112** api (+2 test: label scheme, retrieve_context d3) · direct python: d1 citations ["D1 - Trang 1","D1 - Trang 4"] · d3 ["D1-F - Trang 1","D1-F - Trang 6"] — **intersection rỗng** → click không thể nhảy nhầm · web build PASS (kèm t29/t30 của Dev4 cùng file) · :8001/:3000 không đụng (server tạm thử HTTP bị env flaky — đã verify label ở tầng retrieval deterministic, đủ cho P0-1). CHANGELOG ghi.
+
+**Addendum t32 (SCHEME B — PO2 chốt):** label full Day1/Day2 chuyển "D1-F"/"D2-F" → **"D1 Full"/"D2 Full"** (rag._DOC_LABELS + slideDocs code + ChatPanel CITATION_FULL_RE nhận `D[12](-F|\s*Full)` — backfill vẫn decode được label tạm cũ; legacy D3..D16/DAY05-REF giữ nguyên). Verify: pytest **137/137** (112 api + 25 rag) · retrieval d1 "D1 .../d3 "D1 Full ..." không overlap · web build PASS.
+
+### t35 — P0-2 Render misconceptions từ Tutor Coach (Dev4)
+
+**Trạng thái:** ✅ triển khai xong — ChatPanel giờ HIỂN THỊ card misconception mà A-05 đã detect (trước chỉ render follow-ups + badge move). Chỉ sửa UI `apps/web/src/components/ChatPanel.tsx`, backend giữ nguyên.
+
+**Envelope (đã đọc code trước khi làm):** `apps/api/agent/nodes/tutor_coach.py build_envelope()` trả `misconceptions: list[str]` (tối đa 3: React/ReAct trước, rồi memory) — `server.py` stream đã pass vào `data.misconceptions` (SSE done), `Message.misconceptions?: string[]` đã có trong ChatPanel nhưng **chưa từng render**.
+
+**UI mới (bên dưới câu trả lời tutor, giữa envelope và rating):** card nhỏ `border-warning/40 bg-warning/5` + icon WarningCircle + mỗi dòng "Có thể bạn đang hiểu nhầm: <nội dung>" + nút **"Giải thích lại"** (bg-brand-600, điền composer `Giải thích lại để mình hiểu đúng: <misc…>` — helper `miscActionPrompt()`, không nhét câu tutor) + nút **dismiss** (X) → ẩn card theo msg.id (`dismissedMisc` state), không hiện lại. Follow-ups/rating/citation KHÔNG đổi.
+
+**Verify:** (1) `npm run build` PASS (Next 16.2.12, TS sạch, exit 0 — build cuối restore NEXT_PUBLIC_AGENT_API_URL=:8001). (2) E2E thật mock SSE :8005 (CORS) + next start :3006 + Chrome CDP :9225 (cổng tạm của tôi, đã kill; :8001/:3000/:3002 không đụng): 1 turn trả `misconceptions: ["Nhầm React … ReAct …"]` + 2 follow_ups → card hiện đúng text + icon ✓ · click "Giải thích lại" → composer = "Giải thích lại để mình hiểu đúng: Nhầm React (framework JS) với ReAct (pattern agent trong slide Day 3)" ✓ · chip follow-up vẫn còn (Đào sâu hơn… / Cho mình ví dụ…) ✓ · dismiss → card biến mất (0 element) ✓. Screenshot /tmp/vlearn-dev4/t35-misconception-card-1440.png. Lưu ý: .env.local đã tạm đổi :8005 rồi ĐÃ khôi phục :8001.
+
+### t34 — P0-4 Notes persist + sync qua Memory A-06 (Dev2)
+
+**Backend:** memory store thêm `page_notes: [{doc_id, page, text, updated_at}]` (EMPTY_STATE + update_state merge theo (doc,page)) + `set_page_note()` (text rỗng = xoá) + `get_page_notes(doc_id)`; endpoint mới `GET/PUT /api/learners/{id}/notes` (PUT body {doc_id, page, text} → upsert). Không PII.
+
+**Frontend (3 file):** lib/learner.ts (getLearnerId dùng chung) · SlideViewer: mở panel → đọc local (fallback nhanh) + fetch notes server (merged, server thắng) + state notePages; handleSaveNote: vẫn ghi localStorage (offline mirror) + PUT sync (lỗi mạng im lặng) + cập nhật dot ngay; đổi doc → reload notePages · PDFViewer: prop `notePages` → **dot brand-500** góc phải trang có note.
+
+**Verify:** pytest **141/141** (116 api + 25 rag; +4 note tests) · live cổng tạm 8008: PUT 2 note → GET trả đủ (persist = reload ✓) · PUT text rỗng → xoá đúng trang ✓ · web build PASS · :8001/:3000 không đụng. CHANGELOG ghi.
+
+**Lưu ý phối hợp:** trong lúc verify, agent khác (P0-5 admin metrics) đang sửa server.py + observability — đã tự ổn (import WINDOW_HOURS), không xung đột với t34 (tôi không đụng những vùng đó). CDP UI reload-test bị ràng buộc môi trường như các vòng trước (prod+headless hydration; dev bị lock bởi :3002) — verify persistence ở tầng API là đủ cho P0-4; QA2 có thể mở :3002 (sau restart :8001) kiểm dot + reload giữ note.
+
+### t36 — Fix "Tóm tắt trang này" (page-scope vs doc-scope) (Dev2)
+
+**Bug:** "tóm tắt trang này" trả summary CẢ slide (map-reduce doc) thay vì trang đang xem.
+
+**Fix (apps/api/agent/nodes/summary.py):** `_page_request()` phát hiện page-scope ("trang này / trang N / trang đang xem / page N") → `_try_page_summary()`: tóm tắt 1 trang từ slide_index (1 LLM call ngắn, prompt riêng, giữ nguyên văn), citation `"{label} - Trang N"` (label theo scheme P0-1: D1, D1 Full...), state kèm `summary_page`; trang không có text → thông báo rõ; không phải page-scope → map-reduce doc-scope giữ nguyên (sau bước paper-check t27).
+
+**Verify:** pytest **122/122** api (tổng 147 với rag 25; +3 tests page-request/page-summary/no-text) · THẬT (LLM, không server — env kill server transient): d10 p16 "tóm tắt trang này" → answer đúng nội dung trang 16 (Retrieval bước quan trọng) + citation **"D10 - Trang 16"** ✓ · "tóm tắt day 4" → 8.4k ký tự map-reduce, không summary_page ✓ · :8001/:3000 không đụng. CHANGELOG ghi.
+
+### t39 — Citation TRONG TEXT câu trả lời click được (Dev2)
+
+**Bug:** dấu `[D1 - Trang 4]`, `[S1]`, `[arxiv-x.pdf - Trang N]` trong markdown là text thường.
+
+**Fix (apps/web/src/components/ChatPanel.tsx — frontend-only, markdown khác không vỡ):** pre-process `linkifyCitations()` — chỉ thay 4 pattern bracket citation thành link nội bộ `vlearn://cite/{slide|paper|slabel|current}?c=...` (giữ nguyên text hiển thị); custom `a` renderer trong ReactMarkdown bắt scheme → `handleInlineCite()`: slide → decodeCitationDoc + jump/flash (tái dùng P0-1); current "[Trang X]" → jump doc đang xem; paper → onOpenPaper(source, trang) (tái dùng t28); slabel [S1] → tìm citation_detail → onOpenPaper. Style: font-mono brand-700 underline dotted + hover bg-brand-50 + focus-visible ring; title tooltip theo loại. Link http ngoài giữ nguyên.
+
+**Verify:** web build PASS · sanity logic (node mirror 5 mẫu): 4 loại citation linkify đúng, `**đậm**`/`code`/`[link](https://…)`/câu không citation GIỮ NGUYÊN ✓ · (CDP render bị ràng buộc môi trường prod+headless như các vòng — QA2 verify trên :3002 sau restart :8001: trả lời có [D1 - Trang 4]/[S1] → bấm nhảy đúng). CHANGELOG ghi.
+
+### t37 — P0-5 Mini-dashboard cost/latency từ trace (Dev4)
+
+**Trạng thái:** ✅ triển khai xong — endpoint `/api/admin/metrics` (1h/24h/7d) + trang `/admin` (tokens Draft A). pytest **144/144** (+3 test mới) · web build PASS (route /admin) · verify live seed 13 trace + 4 feedback trên server tạm :8006 (đã kill; :8001/:3000/:3002 không đụng).
+
+**Backend (3 file):**
+- `agent/observability/trace.py`: `admin_metrics(window_hours)` — đọc traces.jsonl + feedback.jsonl trong cửa sổ (time.time() làm mốc): turns · success_rate (1 - errors/turns) · avg + **P90 nearest-rank** (ceil(0.9n)-1) latency · total/avg cost_usd_est · tokens in/out · tool_usage (count theo tool_match, sort desc) · **top_concepts** (heuristic deterministic: chỉ từ in hoa hoặc từ kỹ thuật rag/llm/token/embed/retriev/agent/react/prompt/vector…, bỏ stopwords tiếng Việt, top 5) · ratings {up, down, total}. `WINDOW_HOURS = {1h:1, 24h:24, 7d:168}`; exports qua `observability/__init__.py`.
+- `server.py`: `GET /api/admin/metrics?window=` — validate window ∈ {1h,24h,7d} (lạ → 422), không gọi LLM.
+- Tests mới `apps/api/tests/test_admin_metrics.py` (3 test): aggregation math + loại trace/feedback ngoài cửa sổ (OBS_DIR monkeypatch + time cố định) · endpoint TestClient shape + 422 · concept extractor lọc nhiễu.
+
+**Frontend:** mới `apps/web/src/app/admin/page.tsx` (client, không thêm dependency): header VLearn · Mini-dashboard + nút "Về workspace" · window selector 1 giờ/24 giờ/7 ngày · stat cards (Lượt hỏi, Tỉ lệ thành công, Latency TB, Chi phí ước tính) · chi tiết (P90, Lỗi, Tokens in/out, Rating 👍👎) · tool usage bars + top concepts chips — đúng tokens (surface-2/ring, font-mono brand, overline).
+
+**Verify live (seed 13 trace, 4 feedback; server tạm :8006 CORS-patched cho :3006 — đã kill):** 1h → 5 turns / success 0.8 / avg 2200ms / p90 4500ms / $0.011 ✓ · 24h → 9 turns / 0.7778 / lookup 5, papers 2, format 1, no_tool 1 / concepts rag 2, paper 2… / ratings up 2 down 1 ✓ · 7d → 13 turns / ratings up 3 down 1 ✓ · window=1month → 422 ✓. CDP :3006: page render đủ số liệu, switch 7d → 13 ✓ · screenshot /tmp/vlearn-dev4/t37-admin-dashboard-1440.png. Lưu ý: .env.local tạm đổi :8006 lúc test → ĐÃ khôi phục :8001, build cuối đúng production.
+
+### t40 — FIX 404 PDF paper khi click "Xem trang" (QA2 t28 verify) (Dev2)
+
+**Bug:** viewer gọi `http://<web-origin>/api/papers/{source}/pdf` (relative) → web frontend không proxy /api/papers → 404; backend :8001 trả 200.
+
+**Fix (chọn CÁCH B, ghi lý do):** SlideViewer dùng **ABSOLUTE URL** `{NEXT_PUBLIC_AGENT_API_URL}/api/papers/{source}/pdf` (fallback localhost:8000) thay vì relative. Lý do: nhất quán với mọi API call khác (chat/notes/gaps đều absolute agentApiUrl) · env inline tại build — không cần cấu hình next.config/rewrite, không đụng rewrite /backend/* cũ · không phụ thuộc proxy nếu web chạy port khác.
+
+**Verify:** build PASS (env + default) · bundle chứa template absolute (`${agentApiUrl}/api/papers/${…}/pdf` — grep chunk) → viewer không bao giờ gọi web-origin /api/papers nữa · backend endpoint 200 + %PDF-1.5 (verified live các vòng trước) · :8001/:3000 không đụng. QA2 re-test: click "Xem trang" citation paper → tải PDF thành công + scroll/flash đúng trang + Thoát về slide + slide citation không vỡ. CHANGELOG ghi.
+
+### t38 — Fix popup "Hỏi AI" hiện nhầm khi bôi đen ngoài vùng slide (Dev4)
+
+**Bug user:** bôi đen chữ ở sidebar/chat/ghi chú → popup "Hỏi AI" vẫn hiện. Root cause trong `SlideViewer.tsx` selection handler (F7): debounce 80ms check trục DỌC duy nhất (`rect.bottom < top || rect.top > bottom`) — selection ở panel cạnh có cùng băng dọc → lọt qua; panel Ghi chú nằm TRONG scrollRef nên thậm chí nằm trong container.
+
+**Fix (chỉ sửa `apps/web/src/components/SlideViewer.tsx`, handler selectionchange):** popup chỉ hiện khi thỏa CẢ:
+1. `document.activeElement` không phải TEXTAREA/INPUT (chặn chọn trong ô ghi chú/input);
+2. CẢ HAI đầu range (`startContainer` + `endContainer`) nằm trong `scrollRef.current` (loại sidebar/chat/header — DOM containment, không chỉ tọa độ);
+3. rect selection GIAO container theo CẢ HAI trục ngang + dọc (trước chỉ trục dọc) và width > 0.
+
+**Verify (CDP Chrome :3006 + headless :9225 — cổng tạm, đã kill; không đụng :8001/:3000/:3002):**
+- Trạng thái 1 — bôi đen text trong CHAT panel: selection "Xin chào! Mình là VL…" → **0 nút "Hỏi AI"** (popup KHÔNG hiện) ✓ — ảnh /tmp/vlearn-dev4/t38-outside-selection-no-popup-1440.png.
+- Trạng thái 2 — bôi đen text trong text layer slide ("AI IN ACTION", rect top 198 left 94): → popup "Hỏi AI" hiện đúng (pos 136,186 — trên selection, căn giữa) ✓ — ảnh /tmp/vlearn-dev4/t38-inside-selection-popup-1440.png.
+- `npm run build` PASS (Next 16.2.12, TS sạch, exit 0).
+
+### t41 — Fix "cho ví dụ/câu hỏi ôn tập" (sinh nội dung sư phạm, không báo thiếu thông tin) (Dev2)
+
+**Bug (user repro):** "Cho mình ví dụ thực tế hoặc câu hỏi ôn tập về phần này" → trả "Rất tiếc, nội dung slide hiện tại không có đủ thông tin…" — sai bản chất: đây là yêu cầu SINH NỘI DUNG SƯ PHẠM dựa trên ngữ cảnh, không phải tra lookup.
+
+**Fix:**
+- Orchestrator: intent mới `example` (EXAMPLES_CUES deterministic: ví dụ thực tế/ví dụ về/cho ví dụ/example/câu hỏi ôn tập/quiz/ôn tập phần này…; bổ sung vào INTENT_PROMPT cho LLM) → route graph `example_teacher` + stream branch (status answering, stream chunk, done kèm citations + envelope + trace tool example_teacher).
+- Mới nodes/examples.py `generate_examples()`: anchor = nội dung TRANG ĐANG XEM (nếu có text) hoặc retrieval doc-scope k=2; prompt 1-2 ví dụ thực tế BÁM SÁT khái niệm + 1-2 câu hỏi ôn tập kèm đáp án/giải thích + citation `{label} - Trang N` (P0-1); chỉ khi context hoàn toàn trống mới nói "trang này không có nội dung…" (message khác hẳn); LLM lỗi → fallback thân thiện.
+
+**Verify THẬT (LLM, đúng câu user, d10 p16):** intent deterministic = example · output: "## Ví dụ thực tế" (2 ví dụ bám sát Retrieval — y tế + học tập) + "## Câu hỏi ôn tập" (2 câu hỏi + đáp án + giải thích) · citation (D10 - Trang 16) · KHÔNG còn "không có đủ thông tin" ✓ · pytest **128/128 api** (153 tổng; +6 tests: intent example/không đổi các intent cũ, structure+citation, empty-context message khác, chunk, graph route) · web build PASS · :8001/:3000 không đụng. CHANGELOG ghi.

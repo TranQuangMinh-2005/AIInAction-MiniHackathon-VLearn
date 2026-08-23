@@ -1,0 +1,15 @@
+3) Ỉ n h N g hĩa XVố VNUNIVERSITY
+
+ReAct = Reasoning + Acting
+ReAct là pattern kết hợp suy luận theo từng bước với gọi công cụ và quan sát
+kết quả. Thay vì trả lời ngay, agent sẽ lặp qua các bước:
+
+= Thought: mình đang thiếu gì, nên làm gì tiếp?
+
+=m Action: gọi tool nào, với tham số nào?
+
+=m Observation: kết quả trả về là gì?
+
+= Lặp lại đến khi đủ thông tin để trả lời hoặc gặp điều kiện dừng
+
+Giảng viên (VinUni) AIGB - Ngày 3 17/03/2026 22/62

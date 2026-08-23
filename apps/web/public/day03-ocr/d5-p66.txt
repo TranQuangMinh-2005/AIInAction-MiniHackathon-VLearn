@@ -1,0 +1,27 @@
+Khi Nào Chatbot Thắng, Khi Nào Agent Thắng?
+
+Khía cạnh Chatbot thắng Agent thắng
+Tác vụ FAQ, support đơn giản, nội dung  Booking, research, coding, data
+1 lượt analysis nhiều bước
+
+Tốc độ Nhanh, ít round-trip Chậm hơn do loop và tool calls
+
+Cost Thấp hơn, predictable hơn Cao hơn nhưng đổi lại xử lý
+được bài toán khó hơn
+
+Kiểm soát Dễ hon, ít state Khó hơn vì cần orchestration và
+eval theo trace
+
+UX Phản hồi nhanh, đơn giản Tạo cảm giác “làm việc giúp bạn”
+
+nếu làm tốt
+
+Bắt đầu bằng chatbot là lựa chọn mặc định tốt
+
+xự VINUNIVERSITY
+
+Giảng viên (VinUni)
+
+AICB - Ngày 3 17/03/2026
+
+51/62

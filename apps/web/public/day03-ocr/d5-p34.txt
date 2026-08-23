@@ -1,0 +1,4 @@
+ReAct Pattern
+
+Reasoning + Acting: cách đơn giản nhất để biến LLM thành
+agent có thể debug được

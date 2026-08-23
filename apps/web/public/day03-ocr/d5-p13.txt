@@ -1,0 +1,5 @@
+Mỗi nhóm chọn một bài toán / vấn đề và viết ra 3 kết 
+quả thực thi theo các level Rule-based bot, LLM 
+chatbot, Agent
+Khuyến khích lấy các ví dụ giải quyết pain points 
+của chính bản thân mình.

@@ -1,0 +1,4 @@
+Kiến Trúc Agent
+
+Perception, reasoning, action, memory và luồng thông tin giữa
+các khối

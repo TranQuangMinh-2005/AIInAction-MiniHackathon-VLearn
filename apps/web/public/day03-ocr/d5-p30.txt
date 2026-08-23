@@ -1,0 +1,26 @@
+Kiến Trúc Agent: Từ Trong Ra Ngoài Wwouvensrv
+
+Input từ môi trường
+
+Perception Action
+User input API / Search
+Tool results Final answer
+
+# Perception: agent nhận text, tool
+output, feedback
+
+Reasoning # Reasoning: phân tích trạng thái
+LLM Core và chọn bước tiếp theo
+
+# Action: gọi tool hoặc trả lời user
+m Memory: giữ goal, facts, và
+Short-term Long-term intermediate results
+
+Memory Memory
+Context window Store / DB
+
+State và memory giúp agent không “mắt mạch”
+
+4 khối kiến trúc thường kéo theo 4 nhóm cost chính: token, storage, API, và latency.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 17/62

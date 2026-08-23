@@ -1,0 +1,14 @@
+Lịch Sử Ngắn: Từ Chain-of-Thought Đến Agent \ývuveerv
+
+2022/10 2023/06 2024+
+
+Suy luận từng bước Reasoning + Acting : FC + reasoning trace
+nhưng không giảm hallucination Native structured production standard LangGraph,
+grounded tool calls state machine
+
+workflow phức tạp
+
+Ta đang học ReAct (2022) — nền tảng. Production hiện tại dùng Hybrid (2024+).
+Ngày 4+ sẽ chạm Graph Agents.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 23/62

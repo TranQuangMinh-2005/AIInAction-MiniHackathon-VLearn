@@ -1,0 +1,17 @@
+Kịch Bản Live Demo \ vNuNvensirv
+
+. Định nghĩa 2 tools: get_weather và recommend_outfit
+
+. Viết system prompt: agent chỉ được kết luận khi đã có dữ liệu thời tiết
+Chạy loop và đọc trace Thought / Action / Observation
+
+.. Cố tình tạo lỗi: tool timeout hoặc agent chọn sai outfit
+
+. Debug: sửa prompt, sửa tool description, hoặc thêm safeguard
+
+œ +> Gœ N —
+
+Cho học viên thấy agent fail ở đâu và vì sao trace lại quan trọng hơn một final answer
+“trông có vẻ đúng”.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 47/62

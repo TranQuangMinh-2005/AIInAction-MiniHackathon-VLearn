@@ -1,0 +1,24 @@
+Pseudocode: Agent Loop Tối Thiều \Vevrerr
+
+messages = []
+
+for step in range(MAX_TTERATI0NS) :
+output = caLL_modetL(
+system=SYSTEM_PR0MPT,
+messages=messages,
+toots=T00LS,
+)
+
+1f output.type == "'finaL_answer"”:
+return output.content
+
+resutt = run_tooL(output.name, output.args)
+
+messages += Í
+
+output.as_message(),
+tooL_message(output.name, resutt),
+
+return "Stopped: max iterations reached"
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 35/62

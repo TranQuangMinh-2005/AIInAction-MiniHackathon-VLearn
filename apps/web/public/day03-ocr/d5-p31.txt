@@ -1,0 +1,18 @@
+Memory: Short-term vs Long-term \ý vNuwvcnsrv
+
+Short-term memory Long-term memory
+m Nằm trong context window m Lưu facts, preferences, hay state
+m Dùng cho task hiện tại ngoài context
+= Rẻ để implement, nhưng dễ đầy = Có thể là DB, vector store, key-value
+sfore
+Phù hợp khi
+
+x. = Cần retrieval strategy và permission
+m Cuộc hội thoại ngăn model
+
+m Goal chỉ kéo dài vài bước
+
+Lưu ý: Không phải thêm memory là agent giỏi hơn. Memory chỉ có ích khi chiến
+lược đọc/ghi và quyên truy cập được thiêt kê rõ.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 18/62

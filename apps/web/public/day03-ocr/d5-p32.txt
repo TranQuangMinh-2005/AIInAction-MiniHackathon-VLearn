@@ -1,0 +1,29 @@
+Context Window of LLM Has lIncreased Significantly \ý vAuwvensrrv
+
+Từ 8K lên 1M+ tokens
+trong 2 năm
+
+Tokens
+- PyTorch-eodebaee (32M) - - - - - -——T—-~~ -T-T-~————~~~~~~~—==——~~=~~—=—=———--—~ ©sntee window E GPT-4 (2023): 128K
+M- °b  Leading models "¬
+& CỔ _~. [lOthermodek # Gemini 1.5 Pro (2024): 1M
+M— ° $-6-~P S6o ch an6 280% on uaagecf # GPT-4.1/ Gemini 2.5 (2025): 1M+
+- Salesforce Apex Dev Guide (470k) +a<¡c.==~ - -~=  ===.-_.-..-....nn ietion.li
+RE VN.” cô Ôn  aRỚMRDR CC m Llama 4 (2025): 10M
+100k - ° m : S87 NHỚNG nà (2-needle)
+® =—- Ø  e@Ð ằ cốc # Leading models
+iE—.sf" .vC F ... =¡ Other models
+© © ® - lứa ©°
+1y “.STa Context window lớn hơn = agent
+"= Tà SN giữ được nhiều lịch sử tool call, ob-
+°e servation, và intermediate state hơn
+
+lộ : À
+Apr. 2023 July 2023 Oct.2028 Jan. 2024 Apr. 2024 July 2024 Oct. 2024 Jan.2025 Apr. 2025 duly 2025 trước khi Ỷ long term memOf?.
+
+Publication date Ầ
+Nguôn: Epoch AI,
+
+epoch.ai/data-insights/context-windows
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 28/44

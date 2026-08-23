@@ -1,0 +1,17 @@
+Evaluation Agent: Không Chỉ Chấm Final Answer NV vNuwvensirv
+
+5 câu hỏi eval cho mỗi trace:
+
+1. Reasoning quality: Mỗi Thought có justified không? Hay “suy nghĩ” vô nghĩa?
+2. Tool selection: Agent chọn đúng tool không? Có bỏ sót tool cần thiết?
+3. Argument correctness: Args truyền vào có valid? (format, type, constraints)
+
+4. Stopping optimality: Agent dừng đúng lúc? Quá sớm (thiếu data) hay quá muộn (lãng
+phí}?
+
+5. Answer grounding: Final answer consistent với observations không? Hay bịa thêm?
+
+Lưu ý: Eval chatbot: chấm answer quality. Eval agent: chấm cả trace quality + answer
+quality. Đó là lý do trace chiếm 25/100 điểm trong rubric lab.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 50/62

@@ -1,0 +1,16 @@
+Trace Ví Dụ: Khi Tool Fail — Graceful Degradation NV vAUuvcnsrv
+
+Thought 1: Tôi cần tìm chuyến bay HAN -> HCM dưới 2 triệu.
+Action 1: search_ flights(origin=”HAN!”, dest=”"SGN,, date=”2026-03-18”,
+max_ price=2000000)
+
+| Observation 1: ERROR --- API timeout after 5 seconds.
+
+Thought 2: Tool fail. Retry 1 lần. Nếu fail lại, thông báo user.
+Action 2: search_ flights(...) —-› ERROR LỊ] n 2
+
+Thought 3: Không thể bịa dữ liệu vé. Fallback: thông báo user + gợi ý check thủ công. -
+Final Answer: Hệ thông tìm vé đang lỗi. Bạn check trực tiêp tại vietjetair.com. Vê thời tiệt
+HCM...
+
+Giảng viên (VinUni) AICB - Ngày 3 LV()<)/20722072.10-72

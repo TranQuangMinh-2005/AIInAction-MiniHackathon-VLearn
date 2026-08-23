@@ -1,0 +1,17 @@
+IET Sao Kết Quả Khác Nhau 2 XVố VNUNIVERSITY
+
+“Tìm vé HAN -› HCM ngày mai dưới 2 triệu, và check thời tiết HCM để gợi ý mang
+
+gì.
+
+Rule-based bot LLM chatbot Agent
+8 Chỉ match keyword cố định § Hiểu ngữ cảnh, trả lời mượt = Tách goail thành sub-tasks
+>_ if "máy bay” then add 8# Nhưng không truy vấn dữ liệu Gọi tool: search_ flights,
+option "Tìm vé máy bay” thật get_weather
+>_ if "thời tiết then add Giá và thời tiết đều là “đoán” # Tổng hợp kết quả thật rồi trả lời
+
+option "Thời tiết”
+# Không hiểu ngữ cảnh
+# Không gọi được API
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 5/44

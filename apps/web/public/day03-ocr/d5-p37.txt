@@ -1,0 +1,25 @@
+messages = [
+{“ro\e": "user",
+“content": “Tim ve HAN->HCM duoi 2tr, goi y trang phuc"},
+
+{"rote": “assistant", # <—- LLM turn 1
+"“content”: "“Thought: Can search ftLights...
+
+Action: search_ftights(origin='HAN', dest='SGN', ...)"},
+{'“roLe": "tooL", "name": “search flLights", # <-- tooLl result
+
+"content": '{"fLights": [{"airLine":“V1“",“price":1750000}]}'},
+
+{"rote": "assistant", # <-- LLM turn 2
+"content": "“Thought: Can check weather...
+
+Action: get_weather(city='HCM', ...)"},
+{'rote": “"toot", "name": "“get_weather",
+
+"content": '{“temp":[27,32],"rain":0.7}'},
+
+{"rote": "“assistant", # <-—- LLM turn 3
+"content": “FinaL: G6oi y chuyen 06:10 gia 1.75M ..."}
+]
+
+# Context window Lon dan qua moi vong -> token cost tang!

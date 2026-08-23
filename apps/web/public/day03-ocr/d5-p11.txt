@@ -1,0 +1,13 @@
+Spectrum: Bot —› Chatbot —› Agent NV vAUuvcnsrv
+
+Khả năng thích nghỉ, tool use, memory, risk tăng dần
+
+Rule-based LLM Reactive Autonomous
+Bot Chatbot Agent Agent
+lí/else cứng Trả lời thông minh Dùng tools + loop Long-horizon goal
+predictable nhưng chủ yếu 1 lượt quan sát theo từng bước nhiều quyết định liên tiếp
+
+Không phải mọi thứ dùng LLM đều là agent. Agent chỉ xuất hiện khi hệ thống phải
+quyết định, hành động, quan sát kết quả, rồi lặp lại.
+
+Giảng viên (VinUni) AIGB - Ngày 3 17/03/2026 4/62

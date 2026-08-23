@@ -1,0 +1,6 @@
+Mỗi nhóm một kịch bản cần sử dụng agent
+Mỗi nhóm phải viết đầy đủ trace Thought/Action/Observation
+(ít nhất 3 bước) lên Discord, bao gồm:
+  - Gọi tool nào, với tham số gì
+  - Observation trả về như thế nào
+  - Khi nào dừng lại và trả lời cuối cùng

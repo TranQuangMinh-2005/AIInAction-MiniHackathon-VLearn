@@ -1,0 +1,14 @@
+Trả Lời Câu Hỏi Đầu Buỏi: ChatGPT, Siri, Cursor2 \V vnuNvrnsirv
+
+Sản phẩm Phân loại Giải thích
+
+ChatGPT (cơ bản) LLM Chatbot Trả lời 1 turn, không tool tự chủ
+
+ChatGPT (web + code) Hybrid Tool use loop khi cần, chatbot khi đơn giản
+Siri Rule-based + NLU Routing cố định, ít dynamic planning
+
+Cursor IDE (Agent mode) Reactive Agent Analyze —› choose tool —> observe —› repeat
+
+Bây giờ các bạn có vocabular/ chính xác đễ mô tả — không còn “chatbot” hay “agent” mơ hồ.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 53/62

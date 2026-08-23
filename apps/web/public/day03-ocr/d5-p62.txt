@@ -1,0 +1,19 @@
+Code Demo: 2 Tool Tối Thiêu lý vNUNvcnsirv
+
+def get_weather(city: str, date: str) -> dict:
+return {
+"€1 CV..2 CV?
+
+"date": date,
+
+recommend_outfit(temp_high: int, rain probabitLity: fLoat) -> str:
+
+i1f rain probability > 0.5:
+return “"Ac )nq,
+
+if temp high > 30:
+return "A‹
+
+return “T
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 48/62

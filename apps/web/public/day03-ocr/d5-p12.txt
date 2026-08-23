@@ -1,0 +1,80 @@
+So Sánh 3 Kiểu Hệ Thống AI
+
+Tiêu chí
+Cách xử lý
+Flexibility
+Memory
+Tool use
+Cost
+
+Risk
+
+Ví dụ phù hợp
+
+Rule-based Bot
+
+If/else cố định
+Thấp
+
+Gần như không có
+Hard-coded
+
+Thấp nhất
+
+Logic dễ kiểm soát
+
+Menu IVR, form valida-
+tiön
+
+LLM Chatbot
+
+Sinh câu trả lời tốt theo
+context
+
+Trung bình
+
+Ngắn hạn trong con-
+text
+
+Có thể gọi tool theo chỉ
+định
+
+Trung bình
+
+Hallucination / format
+drift
+
+FAQ, support cơ bản
+
+So sánh trực quan đề chọn đúng mức độ phức tạp
+
+Agent
+
+Plan —› act —› observe
+—> adapt
+
+Cao
+
+Ngắn hạn + có thể
+thêm long-term mem-
+Ory
+
+Chủ động chọn tool
+theo bước tiếp theo
+
+Cao hơn do loop và
+nhiều calls
+
+Hallucinaton + tool
+misuse + loop
+
+Booking, research,
+coding assistant
+
+xự VINUNIVERSITY
+
+Giảng viên (VinUni)
+
+AIGB - Ngày 3
+
+17/03/2028 6/62

@@ -1,0 +1,13 @@
+Mục Tiêu Ngày KG) XV VNUNVEnSiTY
+
+m Phân biệt được rule-based bot, LLM chatbot, và agent
+
+m Dùng Agentic Fit để biết khi nào nên nâng từ chatbot lên agent
+
+m Hiểu và giải thích được vòng lặp ReAct: Thought -› Action -› Observation
+
+m Phân biệt ReAct prompting với native function calling và biết khi nào dùng cái nào
+
+m Build được ReAct agent đầu tiên với tools, system prompt, và safeguard cơ bản
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 2/62

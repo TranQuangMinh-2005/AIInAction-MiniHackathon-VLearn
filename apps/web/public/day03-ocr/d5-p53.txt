@@ -1,0 +1,13 @@
+Max lterations Safeguard: Tránh Agent Đi Vòng NV vAUuvcnsrv
+
+Cần guardrails gì? Dấu hiệu loop
+m Giới hạn số vòng lặp m lặp lại cùng một tool call
+m Timeout cho từng tool m hỏi lại thông tin đã có
+=m Budget token / cost trần = reasoning không tiến thêm
+m Retry có kiểm soát = observafion không thay đổi nhưng
+m Fallback sang human hoặc chatbot vẫn tiếp tục
+
+Khi output không tiến triển, cùng một tool bị gọi lặp lại, hoặc observation không đổi
+mà agent vẫn tiếp tục, cần dừng loop và fallback.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 41/62

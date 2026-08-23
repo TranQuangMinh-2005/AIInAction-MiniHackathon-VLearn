@@ -1,0 +1,16 @@
+Tiêu Chí Agentic Fit XVố VNUNIVERSITY
+
+1. Multi-step Reasoning 3. Dynamic Decision
+
+Bài toán có cần chia thành nhiều bước phụ thuộc Mỗi bước tiếp theo có phụ thuộc vào kết quả vừa
+nhau không? quan sát không?
+
+2. Tool Interaction
+
+Hệ thống có cần gọi search, API, database, calcu-
+lator, browser, file system...?
+
+Nếu đa số tiêu chí chỉ ở mức 1—2/5, hãy bắt đầu bằng chatbot hoặc workflow đơn
+giản.
+
+Giảng viên (VinUni) AIGB - Ngày 3 17/03/2026 9/62

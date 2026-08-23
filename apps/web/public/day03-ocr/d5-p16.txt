@@ -1,0 +1,27 @@
+Scoring Matrix: Có Cần Agent J4/1)419 V4 \ vNuNvrnsirv
+
+Use case Reasoning Tool use Dynamic  deci- Tổng
+sion
+
+FAO nội bộ HR { 1 1 3
+
+Tóm tắthợp đồng vàhigh- 3 2 2 ĩ
+
+light risk
+
+Booking assistant du lịch 4 5 4 13
+
+Research agent tìm đối 4 4 4 12
+
+thủ cạnh tranh
+
+Code assistant có test & 5 5 4 14
+
+fix loop
+
+Gợi ý đọc điểm:
+
+0-5: Chatbot hoặc rule đủ -› Lab: chatbot baseline sẽ tốt. 6-10: Augmented chatbot —›
+chatbot + 1—2 tools cố định. _ 11—15: Agent đáng thử -› Lab: ReAct agent sẽ vượt trội.
+
+Giảng viên (VinUni) AIGB - Ngày 3 17/03/2026

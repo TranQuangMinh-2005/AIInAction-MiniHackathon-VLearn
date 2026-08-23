@@ -1,14 +1,39 @@
-.DS_Store
-node_modules/
-*.env
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Python virtual environment
-agent/venv/
-agent/__pycache__/
-agent/**/__pycache__/
-*.pyc
-src/agent/venv/
-src/agent/__pycache__/
-src/agent/**/__pycache__/
-src/frontend/.next/
-src/frontend/node_modules/
+# Node
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Env & secrets
+.env
+.env.local
+.env.*.local
+.env.example.*
+!apps/web/.env.example
+
+# Runtime data
+apps/api/agent/memory/data/
+apps/api/agent/observability/data/
+apps/api/agent/.summary_cache/
+libs/rag/data/papers/
+libs/rag/.rag/
+evals/eval/gate_results_*.md
+
+# OS / editor
+.DS_Store
+*.log
+.idea/
+.vscode/
+
+# Team orchestration state (không phải source code)
+.agent-teams/
+.superdesign/

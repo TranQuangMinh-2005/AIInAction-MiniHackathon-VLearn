@@ -1,0 +1,16 @@
+ReAct Tốt ỞỜ Điểm Nào 2 XVố VNUNIVERSITY
+
+Ưu điểm Giới hạn
+= Dễ đọc trace và debug = Tốn nhiều token và latency hơn
+m Tự quyết được bước tiếp theo từ Hưng
+observation m Dê loop hoặc gọi sai tool
+m Phù hợp các bài toán search / = Cần eval theo trace, không chỉ final
+booking / investigation / coding answer
+m Có thể cài safeguard ở từng vòng lặp = Không phù hợp bài toán đơn giản
+
+hoặc cần deterministic tuyệt đối
+
+Lưu ý: ReAct dễ bắt đầu nhất, nhưng khi hệ thống nhiều nhánh hơn, nên chuyển
+sang graph/state machine rõ ràng.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 31/62

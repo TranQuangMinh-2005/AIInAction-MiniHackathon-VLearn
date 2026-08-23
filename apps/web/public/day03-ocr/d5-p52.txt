@@ -1,0 +1,24 @@
+messages = []
+for step in range(MAX_TTERATIONS) :
+output = caLL modet(
+system=SYSTEM_PROMPT, messages=messages, tooLs=T00LS)
+
+i1f output.type == "finaL answer":
+return output.content
+
+try: # <-- Error handLing
+
+resutt = run_tooL(output.name, output.args, timeout=5)
+except TimeoutError:
+
+resuLt = f"ERR0R: {output.name} timed out after 5s"
+except Exception as e:
+
+resuLt = f"ERR0R: {output.name} failed: {str(e)}"
+
+1f is _dupLicate caLL(messages, output.name, output.args):
+resuLt = "WARNING: DupLicate tooL catLt. Try different."
+
+messages += [output.as_message(), tool_message(resutt)]
+
+return "Stopped: max iterations reached"

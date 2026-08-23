@@ -1,0 +1,13 @@
+Các nhóm thảo luận: Những yếu tố nào có thể làm tăng, giảm 
+khả năng sử dụng tools của agent?
+Đăng lên discord theo format:
+Tăng khả năng sử dụng đúng:
+1.  2.  3.
+Giảm khả năng sử dụng đúng:
+1.  2.  3.
+Hints:
+- Cách viết description của tools?
+- Số lượng tools?
+- Sự liên quan giữa các tools?
+LLM cũng khá giống human, khi các bạn thấy khó thì nhiều khả 
+năng LLM/agent cũng thấy khó

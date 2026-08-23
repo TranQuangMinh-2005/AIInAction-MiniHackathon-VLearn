@@ -1,0 +1,16 @@
+27:16) Án: 3 Bug H909 Trace XVố VNUNIVERSITY
+
+Bug 1 — Sai thứ tự tool: Gọi get_weather trước search_fLights. Nếu không có vé thì
+check thời tiêt lãng phí. Nên search vé trước.
+
+Bug 2 — Sai IATA code: dest="HCM" nhưng mã IATA đúng là "SGN" (Tân Sơn Nhất). Tool
+có thể trả kết quả sai hoặc error.
+
+Bug 3 — Hallucination: Observation nói giá 1.75M nhưng Final Answer nói 1.5M (bịa số).
+Và “áo âm dày” khi 27—32°C là sai hoàn toàn.
+
+Eval agent phải đọc trace, không chỉ nhìn final answer. Final answer “trông ổn” nhưng trace
+
+Giảng viên (VinUni) AIGB - Ngày 3 17/03/2026
+
+30/62

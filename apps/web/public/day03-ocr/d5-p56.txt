@@ -1,0 +1,18 @@
+Cost Napkin Math: Chatbot vs Agent NV vNUvvensrrv
+
+Ví dụ: “Tìm vé HAN->›HCM dưới 2tr, gợi ý trang phục” Model: GPT-4o-mini ($0.15/1M in,
+$0.60/1M ouf)
+
+Chatbot (1 LLM call) Agent (3 LLM + 2 tool calls)
+
+Input: ~800 tokens Total input: ~3,600 tokens
+Output: ~‹200 tokens Total output: ~600 tokens
+Cost: ~.$0.0002 Cost: ~-$0.0009 (+ tool API costs)
+Latency: ~1 giây Latency: ~4—6 giây
+
+Nhưng có thể bịa giá vé. Trả lời dựa trên dữ liệu thật.
+
+Agent đắt hơn ~-4.5x và chậm hơn ~4x cho query này. Đổi lại: accuracy cao hơn vì grounded
+trong dữ liệu thật. Luôn cân nhắc cost vs accuracy.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 43/62

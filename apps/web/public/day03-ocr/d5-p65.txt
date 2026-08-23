@@ -1,0 +1,4 @@
+Chatbot vs Agent
+
+Khi nào mỗi loại thắng và tại sao hybrid pattern thường thực
+dụng nhất

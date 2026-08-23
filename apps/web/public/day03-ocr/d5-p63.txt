@@ -1,0 +1,13 @@
+Debug Checklist Khi Agent Lỗi XVố VNUNIVERSITY
+
+Nhìn vào trace trước 4 nơi thường phải sửa
+m Thought có đúng mục tiêu không? m Tool description quá mơ hồ
+m Agent chọn đúng tool chưa? =m System prompt thiếu rule dừng
+m Args truyền vào có hợp lệ không? = Không có safeguard cho retry / loop
+=m Observation có bị thiếu field quan = Evaluation chỉ chấm final answer,
+trọng không? không châm trace
+
+Lưu ý: Agent debugging gần với debugging distributed system hơn là chỉ prompt
+tuning. Ta phải nhìn cả model, tool, state, và orchestration.
+
+Giảng viên (VinUni) AICB - Ngày 3 17/03/2026 49/62
