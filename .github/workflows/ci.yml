@@ -18,6 +18,10 @@ concurrency:
 env:
   PYTHON_VERSION: "3.12"
   NODE_VERSION: "22"
+  # CI không có .env → ép provider openai + key giả để collection pytest không
+  # vỡ (build_chat_model() chạy lúc import). Test offline không gọi LLM thật.
+  RAG_PROVIDER: openai
+  OPENAI_API_KEY: test-dummy-key-for-ci
 
 jobs:
   api-tests:
