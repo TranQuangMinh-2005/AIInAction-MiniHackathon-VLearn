@@ -9,6 +9,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -71,7 +72,7 @@ jobs:
         run: npm ci
 
       - name: Build (TS sạch bắt buộc)
-        run: npm run build 2>&1 | tee ../web-build.log
+        run: npm run build 2>&1 | tee web-build.log
 
       - name: Upload build log (khi fail)
         if: failure()
