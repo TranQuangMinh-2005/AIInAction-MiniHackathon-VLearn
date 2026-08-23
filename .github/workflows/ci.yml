@@ -1,0 +1,125 @@
+# CI — chặn merge (P0-3 · IMPROVEMENT-ROADMAP.md) — t33 Dev4
+# 3 jobs: api-tests (pytest offline) · web-build (Next + TS) · eval-gate (DRY).
+# REAL gate cần KEY LLM + backend đang chạy → BỎ QUA trong CI (env check),
+# chạy thủ công: python3 evals/eval/gate_run.py --real --api http://localhost:8001
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "22"
+
+jobs:
+  api-tests:
+    name: API tests (pytest · offline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Cài dependencies (requirements.txt + pytest)
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: pytest — apps/api + libs/rag (offline autouse, không cần key)
+        run: |
+          mkdir -p reports
+          PYTHONPATH=apps/api:libs/rag/src python -m pytest apps/api/tests libs/rag/tests \
+            -q --junitxml=reports/pytest.xml
+
+      - name: Upload pytest report (khi fail)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-tests-report
+          path: reports/pytest.xml
+          if-no-files-found: ignore
+
+  web-build:
+    name: Web build (Next.js + TS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Cài dependencies (npm ci)
+        run: npm ci
+
+      - name: Build (TS sạch bắt buộc)
+        run: npm run build 2>&1 | tee ../web-build.log
+
+      - name: Upload build log (khi fail)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build-log
+          path: apps/web/web-build.log
+          if-no-files-found: ignore
+
+  eval-gate:
+    name: Eval gate (DRY · golden 20 case)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # gate_run.py --dry chỉ dùng stdlib (argparse/json/urllib/pathlib) —
+      # không cần pip install. Chạy REAL mới cần key + backend → BỎ QUA ở CI.
+      - name: Eval gate DRY (không gọi LLM · không cần key)
+        run: |
+          mkdir -p reports
+          python3 evals/eval/gate_run.py --dry --json reports/gate-dry.json
+          python3 - <<'EOF'
+          import json, sys
+          d = json.load(open("reports/gate-dry.json"))
+          s = d["summary"]
+          ok = s["total"] >= 20 and s["not_run"] == s["total"] and s["mode"] == "dry"
+          print(f"gate: golden={s['golden']} mode={s['mode']} total={s['total']} "
+                f"not_run={s['not_run']} bar={s['bar']}")
+          sys.exit(0 if ok else 1)
+          EOF
+
+      - name: "REAL gate — bỏ qua trong CI (cần key + backend đang chạy)"
+        if: ${{ env.OPENAI_API_KEY == '' }}
+        run: |
+          echo "skip REAL gate: cần OPENAI_API_KEY + backend. Chạy thủ công:"
+          echo "  python3 evals/eval/gate_run.py --real --api http://localhost:8001"
+
+      - name: Upload gate report (khi fail)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-gate-report
+          path: |
+            evals/eval/gate_results_*.md
+            reports/gate-dry.json
+          if-no-files-found: ignore
