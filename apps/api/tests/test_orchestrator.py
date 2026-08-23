@@ -186,7 +186,16 @@ def test_classify_intent_llm_off_topic_with_keyword_stays_off_topic(monkeypatch)
 
 # ── A-01 orchestrate node ────────────────────────────────────────────────────
 
-def test_orchestrate_normalizes_and_sets_intent():
+def test_orchestrate_normalizes_and_sets_intent(monkeypatch):
+    monkeypatch.setattr(
+        orchestrator,
+        "llm",
+        SimpleNamespace(
+            invoke=lambda _prompt: SimpleNamespace(
+                content='{"intent": "slide", "reason": "nhắc slide"}'
+            )
+        ),
+    )
     result = orchestrator.orchestrate(
         {
             "user_question": "sờ lai này có gì?",
