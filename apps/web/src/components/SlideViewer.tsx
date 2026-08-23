@@ -62,7 +62,8 @@ export default function SlideViewer({
   const [selection, setSelection] = useState<SelectionState>({ visible: false, x: 0, y: 0, text: "" });
 
   /* t28 — viewer đang hiển thị paper tạm hay slide */
-  const agentApiUrl = process.env.NEXT_PUBLIC_AGENT_API_URL ?? "http://localhost:8000";
+  /* rỗng = relative /api/* → next rewrites proxy sang backend cùng container */
+  const agentApiUrl = process.env.NEXT_PUBLIC_AGENT_API_URL ?? "";
   const viewingPaper = Boolean(paperView);
   /* t40 — dùng ABSOLUTE URL (không relative): trước đây /api/papers… tương đối
      trúng web origin → 404 (QA2 t28 verify). Không phụ thuộc proxy web. */
@@ -162,7 +163,7 @@ export default function SlideViewer({
     (async () => {
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_AGENT_API_URL ?? "http://localhost:8000"}/api/learners/${encodeURIComponent(learnerId)}/notes?doc_id=${encodeURIComponent(activeDocId)}`,
+          `${agentApiUrl}/api/learners/${encodeURIComponent(learnerId)}/notes?doc_id=${encodeURIComponent(activeDocId)}`,
           { cache: "no-store" }
         );
         if (!response.ok) return;
@@ -190,7 +191,7 @@ export default function SlideViewer({
     (async () => {
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_AGENT_API_URL ?? "http://localhost:8000"}/api/learners/${encodeURIComponent(learnerId)}/notes?doc_id=${encodeURIComponent(activeDocId)}`,
+          `${agentApiUrl}/api/learners/${encodeURIComponent(learnerId)}/notes?doc_id=${encodeURIComponent(activeDocId)}`,
           { cache: "no-store" }
         );
         if (!response.ok) return;
@@ -225,7 +226,7 @@ export default function SlideViewer({
     /* P0-4 — đồng bộ lên Memory (text rỗng = xoá); lỗi mạng im lặng (fallback local) */
     if (learnerId) {
       fetch(
-        `${process.env.NEXT_PUBLIC_AGENT_API_URL ?? "http://localhost:8000"}/api/learners/${encodeURIComponent(learnerId)}/notes`,
+        `${agentApiUrl}/api/learners/${encodeURIComponent(learnerId)}/notes`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

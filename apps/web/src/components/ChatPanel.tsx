@@ -186,7 +186,7 @@ const miscActionPrompt = (items: string[]): string =>
 
 export default function ChatPanel({ activeDocId, currentPage, isOpen, onToggle, onJumpToDocPage, onOpenPaper, selectionText, onSelectionConsumed, onTypingChange }: ChatPanelProps) {
   const agentApiUrl =
-    process.env.NEXT_PUBLIC_AGENT_API_URL || "http://localhost:8000";
+    process.env.NEXT_PUBLIC_AGENT_API_URL || "";
   const [messages, setMessages] = useState<Message[]>([
     { id: "welcome", role: "tutor", content: WELCOME_TEXT },
   ]);
