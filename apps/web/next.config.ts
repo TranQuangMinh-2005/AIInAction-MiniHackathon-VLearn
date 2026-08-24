@@ -2,14 +2,18 @@ import type { NextConfig } from "next";
 
 const nextConfig = {
   async rewrites() {
+    // Khi deploy tách (Vercel + backend riêng): NEXT_PUBLIC_AGENT_API_URL
+    // được set → frontend gọi ABSOLUTE tới backend → không cần proxy.
+    // Khi chạy 1 container (Render/start.sh): không set env → proxy /api/*
+    // sang backend FastAPI cùng container (port 8000).
+    if (process.env.NEXT_PUBLIC_AGENT_API_URL) {
+      return [];
+    }
     return [
-      // Backend chạy CÙNG container (start.sh: uvicorn port 8000) —
-      // proxy mọi /api/* về 8000 để web + api chung 1 origin.
       {
         source: "/api/:path*",
         destination: "http://localhost:8000/api/:path*",
       },
-      // Legacy: rewrite cũ giữ lại cho tương thích
       {
         source: "/backend/:path*",
         destination: "http://localhost:8000/:path*",

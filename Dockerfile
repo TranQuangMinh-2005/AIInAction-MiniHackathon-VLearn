@@ -43,7 +43,7 @@ COPY . .
 COPY --from=web-build /web/node_modules /app/apps/web/node_modules
 COPY --from=web-build /web/.next /app/apps/web/.next
 
-RUN chmod +x start.sh
+RUN chmod +x start.sh docker-entrypoint.sh
 
-EXPOSE 8001 3000
-CMD ["./start.sh"]
+EXPOSE 8001 3000 7860
+CMD ["./docker-entrypoint.sh"]
